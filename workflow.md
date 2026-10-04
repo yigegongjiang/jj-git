@@ -22,6 +22,9 @@
 
 - 多 worktree 并行: 各 worktree 实例并存 (同 bundle id, 按产物路径区分); 数据目录 `build/Build/Products/Debug/debug-config` (每个 worktree 独立, 首次启动打开 `jj-git-test-project`); 窗口标题 + 侧栏顶部显示 worktree 目录名
 - `osascript` MUST 按 PID 定位: `tell application "System Events" to tell (first process whose unix id is <PID>)`, 键盘输入前 `set frontmost of (...) to true`; MUST NOT 用 `tell application "jj-git Debug"` / `application id` (多实例时目标不确定)
+- 界面操作 MUST 用辅助功能动作 (`click button ...` / `set value of text field ...` / `perform action "AXPress"`): 不移动鼠标 / 不抢焦点, 窗口被遮挡或在其他显示器均有效
+- `keystroke` / `key code` 发往前台 App, 与其他会话或人类操作互相抢焦点: 仅在无对应辅助功能动作时使用, 紧接 `set frontmost` 之后发送, 发送后核对结果
+- MUST NOT 坐标点击 (`click at {x, y}` / 模拟鼠标): 命中该坐标最上层的窗口, 未必是目标实例
 - MUST NOT 绕过 `debug.sh` 自行复制 / 改 bundle id 启动
 - 删除 worktree 前 → `./scripts/debug.sh quit`
 
