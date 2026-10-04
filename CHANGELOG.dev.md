@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.5] - 2026-10-04
+
+### Added
+
+- 按仓库记录每条 Git 命令及耗时, 便于事后回溯与性能排查; 可在配置中关闭
+  - `GitCommandLog`: `GitProcess.run` 统一记录 -> `logs/<目录名>-<哈希>.log` (TSV, 串行队列异步追加, 超 `commandLog.maxFileMiB` 轮转 `.log.1`); `RepositoryMonitor` 新增 `ignoring`, 配置监听忽略 `logs/`
+
 ## [0.4.4] - 2026-10-04
 
 ### Changed

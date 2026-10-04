@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.5] - 2026-10-04
+
+### Added
+
+- 按仓库记录每条 Git 命令及耗时, 便于事后回溯与性能排查; 可在配置中关闭
+
 ## [0.4.4] - 2026-10-04
 
 ### Changed
