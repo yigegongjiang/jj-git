@@ -4,6 +4,10 @@ struct WorkspaceCommands: Commands {
     let workspace: Workspace
 
     var body: some Commands {
+        CommandGroup(replacing: .help) {
+            Button("快捷键…") { workspace.showingKeyboardShortcuts = true }
+                .keyboardShortcut("/", modifiers: [.command, .shift])
+        }
         CommandGroup(replacing: .appSettings) {
             Button("打开配置文件") { workspace.openConfig() }.keyboardShortcut(",")
             Button("重启应用") { workspace.restart() }.disabled(!workspace.canRestart)

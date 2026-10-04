@@ -7,6 +7,7 @@ final class Workspace {
     private(set) var config: AppConfig
     var sessions: [String: RepositorySession] = [:]
     var opening: Set<String> = []
+    var showingKeyboardShortcuts = false
     var scanning = false
     var scanProgress = ""
     var error: String?
