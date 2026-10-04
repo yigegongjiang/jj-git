@@ -7,6 +7,16 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.23] - 2026-10-05
+
+### Changed
+
+- 差异区改用原生列表渲染：快速滚动、超大差异（数十万行）时保持流畅
+  - `DiffTableView`（`NSViewRepresentable` + `NSTableView`）替代 SwiftUI `List`；行高按宽度预算查表，仅换行的超长 / 非 ASCII 行用同一 cell 实测
+  - `DiffTableCells`：行底色 / 勾选框 / 行号直接绘制，正文 `NSTextField` 可选中；手动 frame，无 Auto Layout；`Theme.ns*` 纯 sRGB 颜色
+- 窗口未激活时，点击差异行勾选框直接生效
+  - `DiffLineCell.acceptsFirstMouse` 返回 true
+
 ## [0.4.22] - 2026-10-04
 
 ### Changed
