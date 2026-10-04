@@ -24,11 +24,11 @@ struct DiffView: View {
                     if editable {
                         if canDiscard {
                             Button("放弃选中行") { discarding = session.selectedLines }
-                                .buttonStyle(.borderless).font(.system(size: 11))
+                                .buttonStyle(.borderless).font(.ui(-1))
                                 .disabled(session.selectedLines.isEmpty)
                         }
                         Button(session.selectedStaged ? "取消选中行暂存" : "暂存选中行") { apply(session.selectedLines) }
-                            .buttonStyle(.borderless).font(.system(size: 11))
+                            .buttonStyle(.borderless).font(.ui(-1))
                             .disabled(!canEdit || session.selectedLines.isEmpty)
                     }
                 }
@@ -72,7 +72,7 @@ struct DiffView: View {
     private func diffContent(_ diff: TextDiff) -> some View {
         VStack(spacing: 0) {
             if let restriction = diff.partialRestriction {
-                Text(restriction).font(.caption).foregroundStyle(.secondary).padding(6)
+                Text(restriction).font(.ui(-2)).foregroundStyle(.secondary).padding(6)
             }
             GeometryReader { geometry in
                 let width = max(DiffLineView.width(columns: diff.maxColumns), geometry.size.width)
@@ -80,19 +80,19 @@ struct DiffView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(diff.hunks) { hunk in
                             HStack(spacing: 12) {
-                                Text(hunk.header).font(.system(size: 11, design: .monospaced))
+                                Text(hunk.header).font(.mono(-1))
                                     .foregroundStyle(.secondary).lineLimit(1)
                                 Spacer(minLength: 16)
                                 if editable {
                                     if canDiscard {
                                         Button("放弃此块") { discarding = hunk.changeIDs }
-                                            .buttonStyle(.borderless).font(.system(size: 11))
+                                            .buttonStyle(.borderless).font(.ui(-1))
                                     }
                                     Button(session.selectedStaged ? "取消此块暂存" : "暂存此块") { apply(hunk.changeIDs) }
-                                        .buttonStyle(.borderless).font(.system(size: 11)).disabled(!canEdit)
+                                        .buttonStyle(.borderless).font(.ui(-1)).disabled(!canEdit)
                                 }
                             }.padding(.horizontal, 8).frame(width: geometry.size.width, height: 28)
-                                .frame(width: width, alignment: .leading).background(.blue.opacity(0.07))
+                                .frame(width: width, alignment: .leading).background(Theme.titleBar)
                             ForEach(hunk.lines) { line in
                                 DiffLineView(line: line, selected: session.selectedLines.contains(line.id),
                                              selectable: canEdit && line.changed) { toggle(line, in: diff) }
@@ -133,25 +133,19 @@ private struct DiffLineView: View {
     let selectable: Bool
     let toggle: () -> Void
 
-    private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-    private static let columnWidth = ("0" as NSString).size(withAttributes: [.font: font]).width
-
     /// 勾选 24 + 行号 40×2 + 标记 25 + 截断 / 末尾换行提示与留白 200。
     static func width(columns: Int) -> CGFloat {
-        ceil(CGFloat(columns) * columnWidth) + 329
+        let typography = Typography.shared
+        let font = typography.font(mono: true, size: typography.editorFontSize, weight: .regular)
+        return ceil(CGFloat(columns) * ("0" as NSString).size(withAttributes: [.font: font]).width) + 329
+    }
+
+    private var height: CGFloat {
+        (Typography.shared.editorFontSize * 1.75).rounded()
     }
 
     private var tint: Color {
-        if selected {
-            return .accentColor.opacity(0.22)
-        }
-        if line.kind == "+" {
-            return .green.opacity(0.10)
-        }
-        if line.kind == "-" {
-            return .red.opacity(0.09)
-        }
-        return .clear
+        line.kind == "+" ? Theme.added : line.kind == "-" ? Theme.deleted : .clear
     }
 
     var body: some View {
@@ -159,7 +153,7 @@ private struct DiffLineView: View {
             if selectable {
                 Button(action: toggle) {
                     Image(systemName: selected ? "checkmark.square.fill" : "square")
-                        .foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.5))
+                        .foregroundStyle(selected ? Theme.foreground : Theme.foreground.opacity(0.5))
                 }.buttonStyle(.plain).frame(width: 24)
                     .accessibilityLabel("选择差异行 \(line.newLine ?? line.oldLine ?? 0)")
             } else {
@@ -168,7 +162,7 @@ private struct DiffLineView: View {
             Text(line.oldLine.map(String.init) ?? "").frame(width: 40, alignment: .trailing).foregroundStyle(.tertiary)
             Text(line.newLine.map(String.init) ?? "").frame(width: 40, alignment: .trailing).foregroundStyle(.tertiary)
             Text(String(line.kind))
-                .foregroundStyle(line.kind == "+" ? Color.green : line.kind == "-" ? Color.red : Color.secondary)
+                .foregroundStyle(line.changed ? Theme.foreground : Theme.foreground.opacity(0.5))
                 .frame(width: 25)
             Text(line.display).lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
@@ -176,7 +170,9 @@ private struct DiffLineView: View {
                 Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary)
             }
         }
-        .font(.system(size: 12, design: .monospaced))
-        .frame(maxWidth: .infinity, minHeight: 21, maxHeight: 21, alignment: .leading).background(tint)
+        .font(.code())
+        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .leading).background(tint)
+        // 增删行底色与强调色相同，选中改用提亮覆盖层区分。
+        .overlay(selected ? Theme.foreground.opacity(0.25) : .clear)
     }
 }

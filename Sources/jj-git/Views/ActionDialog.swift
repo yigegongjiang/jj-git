@@ -43,7 +43,7 @@ struct ActionDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(dialog.title).font(.headline)
+            Text(dialog.title).font(.ui(1, weight: .semibold))
             Form { fields }.formStyle(.grouped)
             HStack {
                 Spacer()
@@ -65,10 +65,10 @@ struct ActionDialog: View {
         case .renameBranch:
             TextField("新名称", text: $name)
         case let .deleteBranch(reference):
-            Text(reference.name).font(.system(.body, design: .monospaced))
+            Text(reference.name).font(.mono())
             if reference.remote {
                 Text("将删除远端分支；远端提交已变化时会拒绝删除。")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.orange)
             } else {
                 Toggle("允许删除尚未合并的分支", isOn: $force)
                 if !reference.upstream.isEmpty {
@@ -101,9 +101,9 @@ struct ActionDialog: View {
             TextField("远端分支", text: $name)
             if force {
                 Text("将用当前 HEAD 改写远端分支；远端发生新变化时 Git 会拒绝操作。")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.orange)
                 Text(lease.map { "已知远端提交：\($0.prefix(12))" } ?? "缺少已知远端提交，请先 Fetch。")
-                    .font(.caption).textSelection(.enabled)
+                    .font(.ui(-2)).textSelection(.enabled)
             }
         }
     }

@@ -13,7 +13,8 @@ struct LibraryView: View {
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
                     .buttonStyle(.plain).help("新建分组")
             }
-            Divider()
+            .background(Theme.titleBar)
+            ThemedDivider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     repositories(in: nil)
@@ -26,8 +27,8 @@ struct LibraryView: View {
                             Button { workspace.toggleGroup(group.id) } label: {
                                 HStack(spacing: 4) {
                                     Image(systemName: group.collapsed ? "chevron.right" : "chevron.down")
-                                        .font(.system(size: 9, weight: .semibold)).frame(width: 10)
-                                    Text(group.name).font(.system(size: 11, weight: .semibold))
+                                        .font(.ui(-3, weight: .semibold)).frame(width: 10)
+                                    Text(group.name).font(.ui(-1, weight: .semibold))
                                     Spacer(minLength: 0)
                                 }
                                 .foregroundStyle(.secondary).contentShape(Rectangle())
@@ -48,11 +49,11 @@ struct LibraryView: View {
                     ProgressView().controlSize(.small)
                     Text(workspace.scanProgress).lineLimit(1)
                     Button("取消") { workspace.cancelScan() }.buttonStyle(.borderless)
-                }.font(.caption).padding(8)
+                }.font(.ui(-2)).padding(8)
             } else if !workspace.scanProgress.isEmpty {
-                Text(workspace.scanProgress).font(.caption).foregroundStyle(.secondary).padding(8)
+                Text(workspace.scanProgress).font(.ui(-2)).foregroundStyle(.secondary).padding(8)
             }
-            Divider()
+            ThemedDivider()
             HStack {
                 Button { workspace.chooseRepository() } label: { Label("打开", systemImage: "folder") }
                 Spacer()
@@ -88,8 +89,8 @@ struct LibraryView: View {
                         }
                     }
                     .padding(.vertical, 3)
-                    .foregroundStyle(workspace.library.selectedPath == repository.path ? Color.accentColor : Color
-                        .primary)
+                    .foregroundStyle(workspace.library.selectedPath == repository.path ? Theme.accent : Theme
+                        .foreground)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).help(repository.path)
@@ -140,20 +141,20 @@ struct RepositoryTabs: View {
                                 }
                             }.buttonStyle(.plain)
                             Button { workspace.close(path) } label: {
-                                Image(systemName: "xmark").font(.system(size: 9))
+                                Image(systemName: "xmark").font(.ui(-3))
                             }
                             .buttonStyle(.plain).help("关闭标签 ⌘W")
                             .disabled(workspace.sessions[path]?.operation != nil)
                         }
                         .padding(.horizontal, 12).frame(height: 32)
-                        .background(workspace.library.selectedPath == path ? Color.accentColor.opacity(0.12) : .clear)
+                        .background(workspace.library.selectedPath == path ? Theme.accent.opacity(0.12) : .clear)
                         .overlay(alignment: .bottom) {
                             if workspace.library.selectedPath == path {
-                                Color.accentColor.frame(height: 2)
+                                Theme.accent.frame(height: 2)
                             }
                         }
                         .help(path)
-                        Divider().frame(height: 18)
+                        ThemedDivider().frame(height: 18)
                     }
                 }
                 // 撑满可见宽度，标签右侧空白也能拖动 / 双击缩放窗口。

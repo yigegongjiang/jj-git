@@ -16,6 +16,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
+        .themed()
         .environment(\.workspace, workspace)
         .background(WindowFrameKeeper(workspace: workspace))
         .task {
@@ -37,7 +38,8 @@ struct ContentView: View {
                 }
                 RepositoryTabs(workspace: workspace)
             }
-            Divider()
+            .background(Theme.titleBar)
+            ThemedDivider()
             if let error = workspace.error {
                 ErrorBanner(message: error) { workspace.error = nil }
             }

@@ -51,26 +51,26 @@ struct ChangeList: View {
                     }
                     .help(staged ? "全部取消暂存" : "全部暂存")
                     .disabled(files.isEmpty || session.operation != nil)
-                }.buttonStyle(.borderless).font(.system(size: 12, weight: .semibold))
+                }.buttonStyle(.borderless).font(.ui(weight: .semibold))
             }
             if files.isEmpty {
                 Text(staged ? "暂存文件后提交" : "工作目录无变更")
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.ui(-2)).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: $selection) {
                     ForEach(files) { file in
                         HStack(spacing: 6) {
                             Text(file.conflicted ? "!" : String(staged ? file.index : file.worktree))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(file.conflicted ? Color.red : Color.secondary).frame(width: 14)
-                            Text(file.path).font(.system(size: 12)).lineLimit(1).truncationMode(.middle)
+                                .font(.mono(-1, weight: .bold))
+                                .foregroundStyle(file.conflicted ? Theme.deleted : Color.secondary).frame(width: 14)
+                            Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
                             Spacer(minLength: 0)
                         }
                         .tag(file.id).help(file.path)
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.plain).scrollContentBackground(.hidden)
                 // 双击 / 回车 / 空格暂存或取消暂存；右键作用于选中文件。
                 .contextMenu(forSelectionType: String.self) { ids in
                     contextMenu(files.filter { ids.contains($0.id) })
@@ -159,19 +159,19 @@ struct CommitComposer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("提交信息").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                Text("提交信息").font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
                 Spacer()
                 Toggle("Amend", isOn: Binding(get: { session.amend }, set: { session.setAmend($0) }))
-                    .toggleStyle(.checkbox).font(.caption)
+                    .toggleStyle(.checkbox).font(.ui(-2))
                     .disabled(session.status.unborn || session.operation != nil)
             }
             TextEditor(text: $session.message)
-                .font(.system(size: 12)).scrollContentBackground(.hidden)
-                .padding(4).background(.background).overlay(Rectangle().stroke(.quaternary))
+                .font(.code()).scrollContentBackground(.hidden)
+                .padding(4).background(Theme.window).overlay(Rectangle().stroke(Theme.border))
                 .frame(minHeight: 60, maxHeight: .infinity)
                 .accessibilityLabel("提交信息")
             if session.status.conflicts {
-                Text("存在冲突，请解决后暂存。").font(.caption).foregroundStyle(.orange)
+                Text("存在冲突，请解决后暂存。").font(.ui(-2)).foregroundStyle(Theme.orange)
             }
             HStack {
                 Button(session.amend ? "Amend" : "提交") { submit(push: false) }

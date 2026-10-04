@@ -151,7 +151,7 @@ final class RepositorySession: Identifiable {
         if key != referenceKey {
             let commits = try await query.commits(limit: historyLimit, includeHead: !values.0.unborn)
             try Task.checkCancellation()
-            graph = CommitGraphRow.build(commits)
+            graph = CommitGraphRow.build(commits, head: values.0.head)
             graphLanes = min(graph.map(\.width).max() ?? 1, 8)
             hasMoreHistory = commits.count == historyLimit
             referenceKey = key

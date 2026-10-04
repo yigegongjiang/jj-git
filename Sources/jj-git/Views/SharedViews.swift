@@ -8,7 +8,7 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: symbol).font(.system(size: 28)).foregroundStyle(.secondary)
-            Text(title).font(.headline)
+            Text(title).font(.ui(1, weight: .semibold))
             if !detail.isEmpty {
                 Text(detail).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
@@ -27,7 +27,7 @@ struct NamePrompt: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(title).font(.headline)
+            Text(title).font(.ui(1, weight: .semibold))
             TextField("名称", text: $name).textFieldStyle(.roundedBorder).onSubmit(save)
             HStack {
                 Spacer()
@@ -36,7 +36,7 @@ struct NamePrompt: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(20).frame(width: 340)
+        .padding(20).frame(width: 340).themed()
         .onAppear { name = initial }
     }
 
@@ -53,12 +53,12 @@ struct ErrorBanner: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.orange)
             ScrollView { Text(message).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                 .frame(maxHeight: 80)
             Button(action: dismiss) { Image(systemName: "xmark") }.buttonStyle(.plain).help("关闭错误提示")
         }
-        .font(.system(size: 12)).padding(8).background(.orange.opacity(0.09))
+        .font(.ui()).padding(8).background(Theme.orange.opacity(0.12))
     }
 }
 
@@ -105,11 +105,11 @@ struct SectionHeading<Trailing: View>: View {
     @ViewBuilder let trailing: () -> Trailing
     var body: some View {
         HStack {
-            Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+            Text(title).font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
             Spacer()
             trailing()
         }
-        .padding(.horizontal, 10).frame(height: 28).background(.quaternary.opacity(0.4))
+        .padding(.horizontal, 10).frame(height: 28).background(Theme.titleBar)
     }
 }
 
@@ -173,7 +173,7 @@ struct SplitPaneContent<Content: View>: View {
     let workspace: Workspace?
     let content: () -> Content
     var body: some View {
-        content().frame(maxWidth: .infinity, maxHeight: .infinity).environment(\.workspace, workspace)
+        content().frame(maxWidth: .infinity, maxHeight: .infinity).themed().environment(\.workspace, workspace)
     }
 }
 
@@ -190,6 +190,10 @@ final class SplitPaneView: NSSplitView, NSSplitViewDelegate {
 
     private var length: CGFloat {
         isVertical ? bounds.width : bounds.height
+    }
+
+    override var dividerColor: NSColor {
+        Theme.nsBorder
     }
 
     override func layout() {

@@ -6,6 +6,8 @@ struct JJGitApp: App {
 
     init() {
         ShellEnvironment.load()
+        // 固定 Dracula 深色主题，不跟随系统外观。
+        NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
     }
 
     var body: some Scene {

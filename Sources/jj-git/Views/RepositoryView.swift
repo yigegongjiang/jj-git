@@ -14,7 +14,7 @@ struct RepositoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             toolbar
-            Divider()
+            ThemedDivider()
             if let error = session.error {
                 ErrorBanner(message: error) { session.error = nil }
             }
@@ -24,7 +24,7 @@ struct RepositoryView: View {
                     Text("\(operation)：请在终端完成或中止当前操作。")
                     Spacer()
                     Button("打开终端") { workspace.openTerminal(session.location.root) }
-                }.font(.caption).padding(8).background(.orange.opacity(0.1))
+                }.font(.ui(-2)).padding(8).background(Theme.orange.opacity(0.12))
             }
             SplitPane(name: "repository.sidebar", initial: 170, minimum: (130, 480)) {
                 RepositorySidebar(workspace: workspace, session: session, dialog: $dialog)
@@ -35,18 +35,18 @@ struct RepositoryView: View {
                     HistoryView(session: session, dialog: $dialog)
                 }
             }
-            Divider()
+            ThemedDivider()
             statusBar
         }
-        .sheet(item: $dialog) { ActionDialog(dialog: $0, session: session) }
+        .sheet(item: $dialog) { ActionDialog(dialog: $0, session: session).themed() }
     }
 
     private var toolbar: some View {
         HStack(spacing: 12) {
             Label(session.status.detached ? String(session.status.head.prefix(8)) : session.status.branch,
                   systemImage: "arrow.triangle.branch")
-                .font(.system(size: 12, weight: .semibold)).lineLimit(1).help(session.location.root)
-            Text("↑\(session.status.ahead) ↓\(session.status.behind)").font(.caption).foregroundStyle(.secondary)
+                .font(.ui(weight: .semibold)).lineLimit(1).help(session.location.root)
+            Text("↑\(session.status.ahead) ↓\(session.status.behind)").font(.ui(-2)).foregroundStyle(.secondary)
             Spacer(minLength: 5)
             Button { session.fetch() } label: {
                 Label("Fetch", systemImage: "arrow.down.to.line")
@@ -60,7 +60,7 @@ struct RepositoryView: View {
                 Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }
             } label: { Label("Push", systemImage: "arrow.up") }
                 .fixedSize().disabled(session.remotes.isEmpty || session.status.detached || session.operation != nil)
-            Divider().frame(height: 16)
+            ThemedDivider().frame(height: 16)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
                 .help("在终端打开 ⇧⌘T")
             Button { workspace.openEditor(session.location.root) } label: {
@@ -85,7 +85,7 @@ struct RepositoryView: View {
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showOperationOutput) {
-                    ScrollView { Text(session.notice).textSelection(.enabled).padding(12) }.frame(
+                    ScrollView { Text(session.notice).textSelection(.enabled).padding(12) }.themed().frame(
                         width: 520,
                         height: 220
                     )
@@ -98,7 +98,7 @@ struct RepositoryView: View {
                 ProgressView().controlSize(.mini)
             }
             Text("\(session.status.changes.count) 个变更").foregroundStyle(.secondary)
-        }.font(.system(size: 11)).padding(.horizontal, 10).frame(height: 26)
+        }.font(.ui(-1)).padding(.horizontal, 10).frame(height: 26)
     }
 }
 
@@ -113,15 +113,15 @@ struct RepositorySidebar: View {
         let unstaged = changes.count(where: \.unstaged)
         let staged = changes.count(where: \.staged)
         if unstaged > 0 {
-            countBadge(unstaged, color: .orange).help("未暂存 \(unstaged) 个文件")
+            countBadge(unstaged, color: Theme.orange).help("未暂存 \(unstaged) 个文件")
         }
         if staged > 0 {
-            countBadge(staged, color: .green).help("已暂存 \(staged) 个文件")
+            countBadge(staged, color: Theme.green).help("已暂存 \(staged) 个文件")
         }
     }
 
     private func countBadge(_ count: Int, color: Color) -> some View {
-        Text("\(count)").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
+        Text("\(count)").font(.ui(-2, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.window)
             .padding(.horizontal, 5).frame(minWidth: 16, minHeight: 15)
             .background(color, in: Capsule())
     }
@@ -136,7 +136,7 @@ struct RepositorySidebar: View {
                                 section.rawValue,
                                 systemImage: section == .changes ? "square.and.pencil" : "clock.arrow.circlepath"
                             )
-                            .foregroundStyle(session.section == section ? Color.accentColor : Color.primary)
+                            .foregroundStyle(session.section == section ? Theme.accent : Theme.foreground)
                             Spacer(minLength: 0)
                             if section == .changes {
                                 changeCounts
@@ -188,7 +188,7 @@ struct RepositorySidebar: View {
                     }
                 } header: { heading("工作树", key: "worktrees", count: worktrees.count, action: nil) }
             }.padding(10)
-        }.font(.system(size: 12))
+        }
     }
 
     private func expanded(_ key: String) -> Bool {
@@ -202,10 +202,10 @@ struct RepositorySidebar: View {
                 Image(systemName: current ? "checkmark" : "folder.badge.gearshape")
                 VStack(alignment: .leading, spacing: 1) {
                     Text(URL(fileURLWithPath: tree.path).lastPathComponent)
-                        .lineLimit(1).fontWeight(current ? .semibold : .regular)
+                        .lineLimit(1).font(.ui(weight: current ? .semibold : .regular))
                     Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
                         : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
-                        .font(.system(size: 11)).foregroundStyle(.tertiary)
+                        .font(.ui(-1)).foregroundStyle(.tertiary)
                         .lineLimit(1).truncationMode(.middle)
                 }
             }
@@ -221,9 +221,9 @@ struct RepositorySidebar: View {
             Button { workspace.toggleSection(key) } label: {
                 HStack(spacing: 4) {
                     Image(systemName: expanded(key) ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold)).frame(width: 10)
-                    Text(text).font(.system(size: 11, weight: .semibold))
-                    Text("\(count)").font(.system(size: 10).monospacedDigit())
+                        .font(.ui(-3, weight: .semibold)).frame(width: 10)
+                    Text(text).font(.ui(-1, weight: .semibold))
+                    Text("\(count)").font(.ui(-2).monospacedDigit())
                 }
                 .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -244,8 +244,8 @@ struct RepositorySidebar: View {
     private func branchRow(_ branch: GitReference) -> some View {
         HStack(spacing: 5) {
             Image(systemName: branch.current ? "checkmark" : "arrow.triangle.branch")
-                .foregroundStyle(branch.current ? Color.accentColor : Color.secondary)
-            Text(branch.name).lineLimit(1).fontWeight(branch.current ? .semibold : .regular)
+                .foregroundStyle(branch.current ? Theme.accent : Color.secondary)
+            Text(branch.name).lineLimit(1).font(.ui(weight: branch.current ? .semibold : .regular))
         }
         .padding(.vertical, 3)
         .help(branch.name + (branch.checkedOutPath.isEmpty ? "" : "\n" + branch.checkedOutPath))

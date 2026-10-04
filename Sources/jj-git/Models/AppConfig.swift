@@ -44,6 +44,17 @@ struct AppConfig: Codable, Equatable, Sendable {
         var pollSeconds = 5
     }
 
+    struct Appearance: Codable, Equatable, Sendable {
+        /// 字体族名称（如 "FiraCode Nerd Font Mono"）；为空或未安装时使用系统字体。
+        var fontFamily = ""
+        var monospaceFontFamily = ""
+        /// 界面正文字号，标题 / 次要文字按它增减。
+        var fontSize = 12
+        /// 差异 / 提交信息等代码文本字号。
+        var editorFontSize = 12
+    }
+
+    var appearance = Appearance()
     var editor = Editor()
     var terminal = Terminal()
     var git = Git()
@@ -54,6 +65,11 @@ struct AppConfig: Codable, Equatable, Sendable {
 
     func normalized() -> AppConfig {
         var value = self
+        value.appearance.fontFamily = appearance.fontFamily.trimmingCharacters(in: .whitespacesAndNewlines)
+        value.appearance.monospaceFontFamily = appearance.monospaceFontFamily
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        value.appearance.fontSize = appearance.fontSize.clamped(9...20)
+        value.appearance.editorFontSize = appearance.editorFontSize.clamped(9...20)
         value.editor.path = editor.path.trimmingCharacters(in: .whitespacesAndNewlines)
         value.editor.bundleID = editor.bundleID.trimmingCharacters(in: .whitespacesAndNewlines)
         value.terminal.bundleIDs = terminal.bundleIDs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

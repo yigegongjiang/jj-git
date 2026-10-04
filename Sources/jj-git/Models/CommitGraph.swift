@@ -12,11 +12,14 @@ struct CommitGraphRow: Identifiable, Sendable {
     let width: Int
     let continuesFromAbove: Bool
     let edges: [GraphEdge]
+    /// 可从 HEAD 到达；其余提交（未合并的分支 / 标签）淡化显示。
+    let merged: Bool
     var id: String {
         commit.id
     }
 
-    static func build(_ commits: [GitCommit]) -> [Self] {
+    static func build(_ commits: [GitCommit], head: String) -> [Self] {
+        let merged = reachable(from: head, in: commits)
         var lanes: [String] = []
         return commits.map { commit in
             let continued = lanes.contains(commit.hash)
@@ -41,7 +44,21 @@ struct CommitGraphRow: Identifiable, Sendable {
                 }
             }
             return Self(commit: commit, lane: lane, width: max(before.count, lanes.count),
-                        continuesFromAbove: continued, edges: edges)
+                        continuesFromAbove: continued, edges: edges,
+                        merged: merged.isEmpty || merged.contains(commit.hash))
         }
+    }
+
+    /// HEAD 不在已加载的提交中（未出生 / 分离到范围外）时返回空，全部按已合并显示。
+    private static func reachable(from head: String, in commits: [GitCommit]) -> Set<String> {
+        let parents = Dictionary(commits.map { ($0.hash, $0.parents) }, uniquingKeysWith: { first, _ in first })
+        guard parents[head] != nil else { return [] }
+        var result: Set<String> = []
+        var pending = [head]
+        while let hash = pending.popLast() {
+            guard result.insert(hash).inserted, let next = parents[hash] else { continue }
+            pending.append(contentsOf: next)
+        }
+        return result
     }
 }

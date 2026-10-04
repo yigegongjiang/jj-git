@@ -21,7 +21,7 @@ struct HistoryView: View {
             if let detail = session.commitDetail {
                 SplitPane(name: "history.message", vertical: true, initial: 110, minimum: (40, 80)) {
                     ScrollView {
-                        Text(detail.message).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                        Text(detail.message).font(.code()).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(10)
                     }
                 } second: {
@@ -32,12 +32,12 @@ struct HistoryView: View {
                         })) {
                             ForEach(detail.files) { file in
                                 HStack(spacing: 6) {
-                                    Text(file.status).font(.system(size: 10, design: .monospaced))
+                                    Text(file.status).font(.mono(-2))
                                         .foregroundStyle(.secondary)
-                                    Text(file.path).font(.system(size: 12)).lineLimit(1).truncationMode(.middle)
+                                    Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
                                 }.tag(file.id).help(file.path)
                             }
-                        }.listStyle(.plain)
+                        }.listStyle(.plain).scrollContentBackground(.hidden)
                     }
                 }
             } else {
@@ -59,7 +59,7 @@ private struct CommitGraphPanel: View {
                     Button("加载更多") {
                         session.historyLimit += AppConfig.current.history.pageSize
                         session.refresh(forceHistory: true)
-                    }.buttonStyle(.borderless).font(.caption).disabled(session.refreshing)
+                    }.buttonStyle(.borderless).font(.ui(-2)).disabled(session.refreshing)
                 }
             }
             if session.graph.isEmpty {
@@ -82,8 +82,8 @@ private struct CommitGraphPanel: View {
                         bottom: 0,
                         trailing: 8
                     ))
-                }.listStyle(.plain)
-                    .environment(\.defaultMinListRowHeight, 26)
+                }.listStyle(.plain).scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, rowHeight)
                     .task(id: selection) {
                         await Task.yield()
                         guard !Task.isCancelled, let selection,
@@ -98,28 +98,37 @@ private struct CommitGraphPanel: View {
         }
     }
 
+    /// 图轨道与行同高，字号变化时一起缩放，避免轨道线断开。
+    private var rowHeight: CGFloat {
+        Typography.shared.fontSize + 14
+    }
+
     private func historyRow(_ row: CommitGraphRow) -> some View {
         HStack(spacing: 7) {
-            GraphLaneView(row: row).frame(width: CGFloat(session.graphLanes) * 12 + 12, height: 26).clipped()
-            if !row.commit.decorations.isEmpty {
-                Text(row.commit.decorations).font(.system(size: 10, weight: .medium))
-                    .lineLimit(1).padding(.horizontal, 4).padding(.vertical, 2)
-                    .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 3))
-                    .frame(maxWidth: 190, alignment: .leading)
-            }
-            Text(row.commit.subject).font(.system(size: 12)).lineLimit(1)
-            Spacer(minLength: 4)
-            Text(row.commit.author).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).frame(width: 90)
-            Text(row.commit.date.formatted(date: .numeric, time: .shortened))
-                .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
-            Text(row.commit.shortHash).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
-        }.frame(height: 26).help(row.commit.subject + "\n" + row.commit.author + " · " + row.commit.date.formatted())
+            GraphLaneView(row: row).frame(width: CGFloat(session.graphLanes) * 12 + 12, height: rowHeight).clipped()
+            Group {
+                if !row.commit.decorations.isEmpty {
+                    Text(row.commit.decorations).font(.ui(-2, weight: .medium))
+                        .lineLimit(1).padding(.horizontal, 4).padding(.vertical, 2)
+                        .background(Theme.badge, in: RoundedRectangle(cornerRadius: 3))
+                        .frame(maxWidth: 190, alignment: .leading)
+                }
+                // List 行不继承外层字体，需显式指定。
+                Text(row.commit.subject).font(.ui()).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(row.commit.author).font(.ui(-1)).foregroundStyle(.secondary).lineLimit(1).frame(width: 90)
+                Text(row.commit.date.formatted(date: .numeric, time: .shortened))
+                    .font(.ui(-1)).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
+                Text(row.commit.shortHash).font(.mono(-2)).foregroundStyle(.secondary)
+            }.opacity(row.merged ? 1 : Theme.notMergedOpacity)
+        }.frame(height: rowHeight)
+            .help(row.commit.subject + "\n" + row.commit.author + " · " + row.commit.date.formatted())
     }
 }
 
 private struct GraphLaneView: View {
     let row: CommitGraphRow
-    private let colors: [Color] = [.teal, .orange, .purple, .blue, .pink, .green]
+    private let colors = Theme.graph
 
     var body: some View {
         Canvas { context, size in

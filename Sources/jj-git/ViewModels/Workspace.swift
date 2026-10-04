@@ -300,7 +300,8 @@ extension Workspace {
             config = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) }?.normalized() ?? AppConfig()
             AppConfig.current = config
             configValid = true
-            reportFile(ConfigStore.configURL, nil)
+            let missingFonts = Typography.shared.apply(config.appearance)
+            reportFile(ConfigStore.configURL, missingFonts.map { GitFailure(message: $0) }, kept: false)
         } catch {
             configValid = false
             reportFile(ConfigStore.configURL, error)
@@ -355,8 +356,8 @@ extension Workspace {
         }
     }
 
-    private func reportFile(_ url: URL, _ failure: Error?) {
-        let message = failure.map { "\(url.path) 无效，修正前沿用上次内容：\n\($0.localizedDescription)" }
+    private func reportFile(_ url: URL, _ failure: Error?, kept: Bool = true) {
+        let message = failure.map { "\(url.path)\(kept ? " 无效，修正前沿用上次内容" : "")：\n\($0.localizedDescription)" }
         if let previous = fileErrors[url.path], error == previous {
             error = message
         } else if let message {
