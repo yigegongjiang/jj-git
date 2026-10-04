@@ -38,9 +38,18 @@ struct ChangeList: View {
     var body: some View {
         VStack(spacing: 0) {
             SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)") {
-                Button(staged ? "全部取消" : "全部暂存") { transfer(files) }
-                    .buttonStyle(.borderless).font(.system(size: 11))
+                HStack(spacing: 10) {
+                    Button { transfer(selectedFiles) } label: {
+                        Image(systemName: staged ? "chevron.up" : "chevron.down")
+                    }
+                    .help(staged ? "取消暂存选中 (空格)" : "暂存选中 (空格)")
+                    .disabled(selectedFiles.isEmpty || session.operation != nil)
+                    Button { transfer(files) } label: {
+                        Image(systemName: staged ? "chevron.up.2" : "chevron.down.2")
+                    }
+                    .help(staged ? "全部取消暂存" : "全部暂存")
                     .disabled(files.isEmpty || session.operation != nil)
+                }.buttonStyle(.borderless).font(.system(size: 12, weight: .semibold))
             }
             if files.isEmpty {
                 Text(staged ? "暂存文件后提交" : "工作目录无变更")
@@ -60,11 +69,16 @@ struct ChangeList: View {
                     }
                 }
                 .listStyle(.plain)
-                // 双击 / 回车暂存或取消暂存；右键作用于选中文件。
+                // 双击 / 回车 / 空格暂存或取消暂存；右键作用于选中文件。
                 .contextMenu(forSelectionType: String.self) { ids in
                     contextMenu(files.filter { ids.contains($0.id) })
                 } primaryAction: { ids in
                     transfer(files.filter { ids.contains($0.id) })
+                }
+                .onKeyPress(.space) {
+                    guard !selectedFiles.isEmpty, session.operation == nil else { return .ignored }
+                    transfer(selectedFiles)
+                    return .handled
                 }
                 .task(id: selection) {
                     await Task.yield()
@@ -83,10 +97,6 @@ struct ChangeList: View {
                         selection = []
                     }
                 }
-            }
-            if selectedFiles.count > 1 {
-                Button("\(staged ? "取消暂存" : "暂存") \(selectedFiles.count) 个文件") { transfer(selectedFiles) }
-                    .buttonStyle(.borderless).font(.caption).padding(5).disabled(session.operation != nil)
             }
         }.frame(minHeight: 90)
             .confirmationDialog("放弃未暂存变更？", isPresented: Binding(

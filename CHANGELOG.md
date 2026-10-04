@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.3] - 2026-10-04
+
+### Added
+
+- 本地变更: 空格键暂存 / 取消暂存选中文件; 列表标题新增「暂存选中」「全部暂存」图标按钮 (已暂存列表为取消)
+
 ## [0.2.2] - 2026-10-04
 
 ### Fixed

@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.3] - 2026-10-04
+
+### Added
+
+- 本地变更: 空格键暂存 / 取消暂存选中文件; 列表标题新增「暂存选中」「全部暂存」图标按钮 (已暂存列表为取消)
+  - `ChangeList`: `.onKeyPress(.space)` + `SectionHeading` 内 `chevron.down(.2)` / `chevron.up(.2)` 按钮; 移除列表底部多选暂存按钮
+
 ## [0.2.2] - 2026-10-04
 
 ### Fixed
