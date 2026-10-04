@@ -7,6 +7,19 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.0] - 2026-10-04
+
+### Added
+
+- 固定使用 Dracula 深色主题 (窗口 / 标题栏 / 强调色 / 差异 / 提交图配色)
+  - `Theme` 色值; `NSApp.appearance = .darkAqua`; `AccentColor` 资源 + `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME`; `SplitPaneView.dividerColor`
+  - `ThemedDivider`: `overlay(..., ignoresSafeAreaEdges: [])`, 默认延伸安全区会盖住标题栏区域的标签栏
+- 可在配置中自定义界面字体、等宽字体、界面字号与代码字号, 修改即时生效
+  - `AppConfig.Appearance`; `Typography` (@Observable 单例 + 字体缓存, 缺字重回退常规); `Font.ui/mono/code`; `.themed()` 用于每个 `NSHostingView` 根
+  - List 行不继承外层字体, 行内 `Text` 显式 `.font(.ui())`; 历史行高 / 差异行高随字号缩放
+- 提交历史中不在当前分支上的提交淡化显示
+  - `CommitGraphRow.merged`: 从 HEAD 沿父提交可达; opacity 0.4
+
 ## [0.3.6] - 2026-10-04
 
 ### Added
