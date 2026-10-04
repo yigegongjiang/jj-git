@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.3] - 2026-10-04
+
+### Changed
+
+- 所有分割线均可拖动调整宽 / 高 (仓库列表 / 侧栏 / 文件列表 / 提交信息 / 提交历史 / 提交详情), 位置在切换标签、页面和重启后保留
+
 ## [0.3.2] - 2026-10-04
 
 ### Fixed

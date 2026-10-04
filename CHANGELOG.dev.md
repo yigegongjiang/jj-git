@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.3] - 2026-10-04
+
+### Changed
+
+- 所有分割线均可拖动调整宽 / 高 (仓库列表 / 侧栏 / 文件列表 / 提交信息 / 提交历史 / 提交详情), 位置在切换标签、页面和重启后保留
+  - `HSplitView` / `VSplitView` / 固定 `Divider` -> `SplitPane` (`NSSplitView` + `NSHostingView`, autosave `jj-git.*`); 原分栏首次布局撑满 maxWidth 导致只能缩小
+  - `pinned` 栏窗口缩放保持尺寸 (`shouldAdjustSizeOfSubview`); 提交图列表拆为 `CommitGraphPanel` 持有选中状态
+
 ## [0.3.2] - 2026-10-04
 
 ### Fixed
