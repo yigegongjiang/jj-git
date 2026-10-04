@@ -170,16 +170,16 @@ struct RepositorySidebar: View {
                     ForEach(session.worktrees.filter { !$0.bare }) { tree in
                         let current = tree.path == session.location.root
                         Button { Task { await workspace.open(tree.path) } } label: {
-                            HStack(spacing: 5) {
-                                Label(
-                                    URL(fileURLWithPath: tree.path).lastPathComponent,
-                                    systemImage: current ? "checkmark" : "folder.badge.gearshape"
-                                )
-                                .lineLimit(1).fontWeight(current ? .semibold : .regular).layoutPriority(1)
-                                Spacer(minLength: 4)
-                                Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
-                                    : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
-                                    .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Image(systemName: current ? "checkmark" : "folder.badge.gearshape")
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(URL(fileURLWithPath: tree.path).lastPathComponent)
+                                        .lineLimit(1).fontWeight(current ? .semibold : .regular)
+                                    Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
+                                        : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
+                                        .font(.system(size: 11)).foregroundStyle(.tertiary)
+                                        .lineLimit(1).truncationMode(.middle)
+                                }
                             }
                             .padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
