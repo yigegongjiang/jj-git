@@ -94,3 +94,18 @@ enum RepositoryScanner {
         return result
     }
 }
+
+/// 仅明确的路径不存在允许快捷移除；权限 / Git 错误保留原记录。
+extension SavedRepository {
+    static func isMissing(_ path: String) -> Bool {
+        do {
+            _ = try FileManager.default.attributesOfItem(atPath: path)
+            return false
+        } catch {
+            let failure = error as NSError
+            return (failure.domain == NSCocoaErrorDomain &&
+                [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(failure.code)) ||
+                (failure.domain == NSPOSIXErrorDomain && failure.code == Int(ENOENT))
+        }
+    }
+}

@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.8] - 2026-10-04
+
+### Added
+
+- 路径不存在的仓库打开失败时，可在提示旁一键从列表移除并关闭标签
+
 ## [0.4.7] - 2026-10-04
 
 ### Added

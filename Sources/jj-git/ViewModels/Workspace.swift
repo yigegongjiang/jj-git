@@ -9,7 +9,11 @@ final class Workspace {
     var opening: Set<String> = []
     var scanning = false
     var scanProgress = ""
-    var error: String?
+    var error: String? {
+        didSet { missingRepositoryPath = nil }
+    }
+
+    private(set) var missingRepositoryPath: String?
     @ObservationIgnored private var configMonitor: RepositoryMonitor?
     /// 最近一次读写的文件内容，用于忽略自身写入触发的监听事件。
     @ObservationIgnored private var configData: Data?
@@ -47,17 +51,6 @@ final class Workspace {
         }
     }
 
-    func restore() async {
-        let selected = library.selectedPath
-        for path in library.tabs {
-            await open(path, select: path == selected)
-        }
-        // 打开失败的标签保留（可能只是等待系统授权），点击标签时重试；不再需要时手动关闭。
-        if self.selected == nil, let path = library.tabs.first(where: { sessions[$0] != nil }) {
-            select(path)
-        }
-    }
-
     func open(_ path: String, select shouldSelect: Bool = true, groupID: UUID? = nil) async {
         guard !opening.contains(path) else { return }
         opening.insert(path)
@@ -77,7 +70,12 @@ final class Workspace {
                 select(location.root)
             }
             save()
-        } catch { self.error = "\(path)\n\(error.localizedDescription)" }
+        } catch {
+            self.error = "\(path)\n\(error.localizedDescription)"
+            if SavedRepository.isMissing(path) {
+                missingRepositoryPath = path
+            }
+        }
     }
 
     func select(_ path: String) {

@@ -41,7 +41,14 @@ struct ContentView: View {
             .background(Theme.titleBar)
             ThemedDivider()
             if let error = workspace.error {
-                ErrorBanner(message: error) { workspace.error = nil }
+                if let path = workspace.missingRepositoryPath {
+                    ErrorBanner(message: error, remove: {
+                        workspace.error = nil
+                        workspace.remove(path)
+                    }, dismiss: { workspace.error = nil })
+                } else {
+                    ErrorBanner(message: error) { workspace.error = nil }
+                }
             }
             if let session = workspace.selected {
                 RepositoryView(workspace: workspace, session: session).id(session.id)
