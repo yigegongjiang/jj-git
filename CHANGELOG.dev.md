@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.5] - 2026-10-04
+
+### Added
+
+- 侧栏「本地变更」显示未暂存 (橙) / 已暂存 (绿) 文件数, 切到其他页面也能看到
+  - `RepositorySidebar.changeCounts`: 按 `FileChange.unstaged` / `.staged` 计数, 0 不显示
+
 ## [0.2.4] - 2026-10-04
 
 ### Fixed

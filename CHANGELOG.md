@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.5] - 2026-10-04
+
+### Added
+
+- 侧栏「本地变更」显示未暂存 (橙) / 已暂存 (绿) 文件数, 切到其他页面也能看到
+
 ## [0.2.4] - 2026-10-04
 
 ### Fixed
