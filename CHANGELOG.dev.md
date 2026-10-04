@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.3] - 2026-10-04
+
+### Changed
+
+- 跟随版本同步发布
+  - Debug 数据目录改为 `.app` 同级 `debug-config/` (不再用 `~/.config/jj-git-debug` / `JJGIT_CONFIG_DIR`); `debug.sh` 首次启动打开 `jj-git-test-project`
+
 ## [0.4.2] - 2026-10-04
 
 ### Added
