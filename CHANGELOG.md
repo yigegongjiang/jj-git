@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.6] - 2026-10-04
+
+### Changed
+
+- 侧栏「工作树」改为单行显示: 目录名在左, 分支在右
+
 ## [0.2.5] - 2026-10-04
 
 ### Added

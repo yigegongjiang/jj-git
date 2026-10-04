@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.6] - 2026-10-04
+
+### Changed
+
+- 侧栏「工作树」改为单行显示: 目录名在左, 分支在右
+  - `RepositorySidebar` 工作树行 `VStack` -> `HStack`, 分支名 `.truncationMode(.middle)`, 目录名 `layoutPriority(1)`
+
 ## [0.2.5] - 2026-10-04
 
 ### Added
