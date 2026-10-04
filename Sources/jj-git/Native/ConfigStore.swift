@@ -10,9 +10,9 @@ enum ConfigStore {
     static let directory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/jj-git", isDirectory: true)
     #endif
-    /// 设置：外部修改即时生效。
+    /// 设置：启动时读取。
     static let configURL = directory.appendingPathComponent("config.json")
-    /// 仓库列表 / 分组 / 标签：随界面操作写入，外部修改同样即时生效。
+    /// 仓库列表 / 分组 / 标签：启动时读取，随界面操作写入。
     static let stateURL = directory.appendingPathComponent("state.json")
     /// 全部可用键的默认值，每次启动刷新，仅供查阅。
     static let defaultsURL = directory.appendingPathComponent("config.default.json")

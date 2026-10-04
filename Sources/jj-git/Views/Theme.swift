@@ -26,13 +26,13 @@ private extension Color {
     }
 }
 
-/// config.json `appearance` 的字体；视图 body 读取后随配置热加载刷新。
-@MainActor @Observable
+/// 启动时读取 config.json `appearance`，缓存字体。
+@MainActor
 final class Typography {
     static let shared = Typography()
 
     private(set) var appearance = AppConfig.Appearance()
-    @ObservationIgnored private var cache: [String: NSFont] = [:]
+    private var cache: [String: NSFont] = [:]
 
     var fontSize: CGFloat {
         CGFloat(appearance.fontSize)
@@ -54,10 +54,7 @@ final class Typography {
 
     /// 返回未安装字体的说明，供错误横幅提示。
     func apply(_ value: AppConfig.Appearance) -> String? {
-        if value != appearance {
-            appearance = value
-            cache = [:]
-        }
+        appearance = value
         let installed = Set(NSFontManager.shared.availableFontFamilies)
         let missing = [("appearance.fontFamily", value.fontFamily),
                        ("appearance.monospaceFontFamily", value.monospaceFontFamily)]

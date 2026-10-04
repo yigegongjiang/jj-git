@@ -11,6 +11,16 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.11] - 2026-10-04
+
+### Added
+
+- 顶部与应用菜单增加「重启应用」，重启后读取新配置并恢复仓库标签
+
+### Changed
+
+- 移除配置与状态文件热加载，外部修改需重启应用生效
+
 ## [0.4.10] - 2026-10-04
 
 ### Fixed

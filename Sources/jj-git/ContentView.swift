@@ -38,6 +38,10 @@ struct ContentView: View {
                     WindowBar { SidebarToggle(workspace: workspace) }
                 }
                 RepositoryTabs(workspace: workspace)
+                Button("重启应用", systemImage: "arrow.clockwise.circle") { workspace.restart() }
+                    .buttonStyle(.borderless).padding(.horizontal, 8)
+                    .help("重新读取配置；有未提交的提交信息或任务进行中时不可重启")
+                    .disabled(!workspace.canRestart)
             }
             .background(Theme.titleBar)
             ThemedDivider()

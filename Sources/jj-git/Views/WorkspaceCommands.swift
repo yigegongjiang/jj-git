@@ -6,6 +6,7 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
             Button("打开配置文件") { workspace.openConfig() }.keyboardShortcut(",")
+            Button("重启应用") { workspace.restart() }.disabled(!workspace.canRestart)
         }
         CommandGroup(replacing: .newItem) {
             Button("打开仓库…") { workspace.chooseRepository() }.keyboardShortcut("o")

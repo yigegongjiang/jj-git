@@ -4,7 +4,7 @@ import Observation
 @MainActor @Observable
 final class Workspace {
     var library: RepositoryLibrary
-    var config: AppConfig
+    private(set) var config: AppConfig
     var sessions: [String: RepositorySession] = [:]
     var opening: Set<String> = []
     var scanning = false
@@ -12,13 +12,9 @@ final class Workspace {
     var error: String?
     var missingRepositories: [String] = []
     @ObservationIgnored var repositoryCheckTask: Task<Void, Never>?
-    @ObservationIgnored private var configMonitor: RepositoryMonitor?
-    /// 最近一次读写的文件内容，用于忽略自身写入触发的监听事件。
-    @ObservationIgnored private var configData: Data?
+    /// 避免重复写入相同状态。
     @ObservationIgnored private var stateData: Data?
-    @ObservationIgnored private var configValid = true
     @ObservationIgnored private var stateValid = true
-    @ObservationIgnored private var fileErrors: [String: String] = [:]
     @ObservationIgnored private var scanTask: Task<Void, Never>?
 
     var selected: RepositorySession? {
@@ -38,15 +34,8 @@ final class Workspace {
                 try ConfigStore.write(defaultConfig, to: ConfigStore.configURL)
             }
         } catch { self.error = "\(ConfigStore.directory.path)\n\(error.localizedDescription)" }
-        reloadConfig()
-        reloadState(restoring: false)
-        configMonitor = RepositoryMonitor(paths: [ConfigStore.directory.path],
-                                          ignoring: GitCommandLog.directory) { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.reloadConfig()
-                self?.reloadState(restoring: true)
-            }
-        }
+        loadConfig()
+        loadState()
     }
 
     func open(_ path: String, select shouldSelect: Bool = true, groupID: UUID? = nil) async {
@@ -229,10 +218,12 @@ final class Workspace {
             guard response == .OK, let url = panel.url else { return }
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if configValid {
-                    config.editor.path = url.path
-                    saveConfig()
-                }
+                do {
+                    let data = try ConfigStore.read(ConfigStore.configURL)
+                    var saved = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) } ?? AppConfig()
+                    saved.editor.path = url.path
+                    try ConfigStore.write(ConfigStore.encode(saved), to: ConfigStore.configURL)
+                } catch { self.error = error.localizedDescription }
                 if let path {
                     launch(path, with: url)
                 }
@@ -253,20 +244,40 @@ final class Workspace {
 // MARK: - ~/.config/jj-git 文件
 
 extension Workspace {
-    /// 用编辑器打开 config.json；文件被删除时先按当前配置重建。
+    /// 外部修改配置后，重启应用生效。
     func openConfig() {
-        if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
-            saveConfig()
-        }
-        openEditor(ConfigStore.configURL.path)
+        do {
+            if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
+                try ConfigStore.write(ConfigStore.encode(config), to: ConfigStore.configURL)
+            }
+            openEditor(ConfigStore.configURL.path)
+        } catch { self.error = error.localizedDescription }
     }
 
-    private func saveConfig() {
+    var canRestart: Bool {
+        !scanning && opening.isEmpty && sessions.values.allSatisfy { $0.operation == nil && $0.message.isEmpty }
+    }
+
+    /// 仅重启当前产物；等待旧进程退出，避免两个实例同时写入状态。
+    func restart() {
+        guard canRestart else { return }
+        let helper = Process()
+        helper.executableURL = URL(fileURLWithPath: "/bin/sh")
+        helper.arguments = ["-c", """
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if ! kill -0 "$1" 2>/dev/null; then
+                exec /usr/bin/open -n --env "JJGIT_DEBUG_TAG=$3" "$2"
+            fi
+            sleep 1
+        done
+        """, "jj-git-restart", String(ProcessInfo.processInfo.processIdentifier),
+        Bundle.main.bundleURL.path, DebugInstance.tag ?? ""]
+        helper.standardInput = FileHandle.nullDevice
+        helper.standardOutput = FileHandle.nullDevice
+        helper.standardError = FileHandle.nullDevice
         do {
-            let data = try ConfigStore.encode(config)
-            try ConfigStore.write(data, to: ConfigStore.configURL)
-            configData = data
-            AppConfig.current = config
+            try helper.run()
+            NSApplication.shared.terminate(nil)
         } catch { self.error = error.localizedDescription }
     }
 
@@ -280,84 +291,27 @@ extension Workspace {
         } catch { self.error = error.localizedDescription }
     }
 
-    /// 解析失败时沿用上次的有效配置。
-    private func reloadConfig() {
-        let data: Data?
-        do { data = try ConfigStore.read(ConfigStore.configURL) } catch {
-            reportFile(ConfigStore.configURL, error)
-            return
-        }
-        guard data != configData else { return }
-        configData = data
+    private func loadConfig() {
         do {
+            let data = try ConfigStore.read(ConfigStore.configURL)
             config = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) }?.normalized() ?? AppConfig()
-            AppConfig.current = config
-            configValid = true
-            let missingFonts = Typography.shared.apply(config.appearance)
-            reportFile(ConfigStore.configURL, missingFonts.map { GitFailure(message: $0) }, kept: false)
-        } catch {
-            configValid = false
-            reportFile(ConfigStore.configURL, error)
+        } catch { self.error = "\(ConfigStore.configURL.path)：\n\(error.localizedDescription)" }
+        AppConfig.current = config
+        if let warning = Typography.shared.apply(config.appearance) {
+            error = warning
         }
     }
 
-    /// 解析失败时停止写入 state.json，避免界面操作覆盖外部编辑；修正后按文件内容恢复。
-    private func reloadState(restoring: Bool) {
-        let data: Data?
-        do { data = try ConfigStore.read(ConfigStore.stateURL) } catch {
-            reportFile(ConfigStore.stateURL, error)
-            return
-        }
-        guard data != stateData else { return }
-        stateData = data
-        guard let data else {
-            stateValid = true
-            save()
-            return
-        }
+    private func loadState() {
         do {
-            let value = try ConfigStore.decode(data, defaults: RepositoryLibrary())
-            stateValid = true
-            reportFile(ConfigStore.stateURL, nil)
-            restoring ? apply(value) : (library = value)
+            if let data = try ConfigStore.read(ConfigStore.stateURL) {
+                library = try ConfigStore.decode(data, defaults: RepositoryLibrary())
+                stateData = data
+            }
         } catch {
             stateValid = false
-            reportFile(ConfigStore.stateURL, error)
+            self.error = "\(ConfigStore.stateURL.path)：\n\(error.localizedDescription)"
         }
-    }
-
-    /// 外部修改了 state.json：关闭被移除的标签，打开新增的标签。
-    private func apply(_ value: RepositoryLibrary) {
-        let previous = selected
-        library = value
-        checkMissingRepositories()
-        for (path, session) in sessions where !library.tabs.contains(path) {
-            if session.operation != nil {
-                library.tabs.append(path)
-            } else {
-                session.deactivate()
-                sessions.removeValue(forKey: path)
-            }
-        }
-        if selected !== previous {
-            previous?.deactivate()
-            selected?.activate()
-        }
-        Task {
-            for path in library.tabs where sessions[path] == nil {
-                await open(path, select: path == library.selectedPath)
-            }
-        }
-    }
-
-    private func reportFile(_ url: URL, _ failure: Error?, kept: Bool = true) {
-        let message = failure.map { "\(url.path)\(kept ? " 无效，修正前沿用上次内容" : "")：\n\($0.localizedDescription)" }
-        if let previous = fileErrors[url.path], error == previous {
-            error = message
-        } else if let message {
-            error = message
-        }
-        fileErrors[url.path] = message
     }
 }
 
