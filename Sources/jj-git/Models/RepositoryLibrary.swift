@@ -36,6 +36,8 @@ struct RepositoryLibrary: Codable, Sendable {
     var tabs: [String] = []
     var selectedPath: String?
     var sidebarHidden = false
+    /// 仓库侧栏已折叠的分区键（localBranches / remoteBranches / tags / remotes / worktrees）；空 = 全部展开。
+    var collapsedSections: [String] = []
     /// 主窗口位置与尺寸（屏幕坐标）；nil 时用默认尺寸。
     var window: WindowFrame?
     /// 分栏名 -> 保持尺寸一栏的宽 / 高。

@@ -28,7 +28,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 历史 ⌘1: 提交图 + 详情 + 文件差异; 右键复制 SHA / 新建分支 / 新建标签
 - 本地变更 ⌘2: 双击 / 回车 / 空格暂存·取消; 标题按钮暂存选中 / 全部; 按块 / 按行 (⇧点击连选) 暂存·取消·放弃; 加入 `.gitignore`
 - 提交: ⌘↩ 提交 / ⌘⌥↩ 提交并推送; Amend (推送时 force-with-lease)
-- 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送
+- 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送; 分区标题点击折叠 (默认展开, 记忆)
 - 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
 - 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
 - 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改即时生效
@@ -44,7 +44,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `jj-git-debug/`) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
   - `config.json`: 设置 (编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
-  - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`); 外部修改同步开关标签
+  - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改同步开关标签
   - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅
 - MUST NOT 主动使用 `UserDefaults`: 窗口 / 分栏的 AppKit 自动保存已关闭, 改写 `state.json`
 

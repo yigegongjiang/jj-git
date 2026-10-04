@@ -145,55 +145,89 @@ struct RepositorySidebar: View {
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                     }.buttonStyle(.plain).padding(.vertical, 3)
                 }
+                let local = session.references.filter { !$0.remote && !$0.tag }
+                let remote = session.references.filter(\.remote)
+                let tags = session.references.filter(\.tag)
+                let worktrees = session.worktrees.filter { !$0.bare }
                 Section {
-                    ForEach(session.references.filter { !$0.remote && !$0.tag }) { branch in branchRow(branch) }
-                } header: { heading("本地分支", shortcut: "b") { dialog = .branch(start: "HEAD") } }
-                Section {
-                    ForEach(session.references.filter(\.remote)) { branch in branchRow(branch) }
-                } header: { heading("远端分支", action: nil) }
-                Section {
-                    ForEach(session.references.filter(\.tag)) { tag in
-                        Label(tag.name, systemImage: "tag").lineLimit(1).help(tag.name)
-                            .contextMenu {
-                                Button("推送标签…") { dialog = .pushTag(tag) }.disabled(session.remotes.isEmpty)
-                                Button("删除标签…") { dialog = .deleteTag(tag) }
-                            }
+                    if expanded("localBranches") {
+                        ForEach(local) { branch in branchRow(branch) }
                     }
-                } header: { heading("标签") { dialog = .tag(target: "HEAD") } }
-                Section {
-                    ForEach(session.remotes) { remote in
-                        Label(remote.name, systemImage: "network").help(remote.url)
-                            .contextMenu { Button("编辑远程…") { dialog = .remote(remote) } }
+                } header: {
+                    heading("本地分支", key: "localBranches", count: local.count, shortcut: "b") {
+                        dialog = .branch(start: "HEAD")
                     }
-                } header: { heading("远程") { dialog = .remote(nil) } }
+                }
                 Section {
-                    ForEach(session.worktrees.filter { !$0.bare }) { tree in
-                        let current = tree.path == session.location.root
-                        Button { Task { await workspace.open(tree.path) } } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                                Image(systemName: current ? "checkmark" : "folder.badge.gearshape")
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(URL(fileURLWithPath: tree.path).lastPathComponent)
-                                        .lineLimit(1).fontWeight(current ? .semibold : .regular)
-                                    Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
-                                        : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
-                                        .font(.system(size: 11)).foregroundStyle(.tertiary)
-                                        .lineLimit(1).truncationMode(.middle)
+                    if expanded("remoteBranches") {
+                        ForEach(remote) { branch in branchRow(branch) }
+                    }
+                } header: { heading("远端分支", key: "remoteBranches", count: remote.count, action: nil) }
+                Section {
+                    if expanded("tags") {
+                        ForEach(tags) { tag in
+                            Label(tag.name, systemImage: "tag").lineLimit(1).help(tag.name)
+                                .contextMenu {
+                                    Button("推送标签…") { dialog = .pushTag(tag) }.disabled(session.remotes.isEmpty)
+                                    Button("删除标签…") { dialog = .deleteTag(tag) }
                                 }
-                            }
-                            .padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }.buttonStyle(.plain).help(tree.path).disabled(tree.prunable)
+                        }
                     }
-                } header: { heading("工作树", action: nil) }
+                } header: { heading("标签", key: "tags", count: tags.count) { dialog = .tag(target: "HEAD") } }
+                Section {
+                    if expanded("remotes") {
+                        ForEach(session.remotes) { remote in
+                            Label(remote.name, systemImage: "network").help(remote.url)
+                                .contextMenu { Button("编辑远程…") { dialog = .remote(remote) } }
+                        }
+                    }
+                } header: { heading("远程", key: "remotes", count: session.remotes.count) { dialog = .remote(nil) } }
+                Section {
+                    if expanded("worktrees") {
+                        ForEach(worktrees) { tree in worktreeRow(tree) }
+                    }
+                } header: { heading("工作树", key: "worktrees", count: worktrees.count, action: nil) }
             }.padding(10)
         }.font(.system(size: 12))
     }
 
-    private func heading(_ text: String, shortcut: KeyEquivalent? = nil, action: (() -> Void)?) -> some View {
+    private func expanded(_ key: String) -> Bool {
+        !workspace.library.collapsedSections.contains(key)
+    }
+
+    private func worktreeRow(_ tree: GitWorktree) -> some View {
+        let current = tree.path == session.location.root
+        return Button { Task { await workspace.open(tree.path) } } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: current ? "checkmark" : "folder.badge.gearshape")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(URL(fileURLWithPath: tree.path).lastPathComponent)
+                        .lineLimit(1).fontWeight(current ? .semibold : .regular)
+                    Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
+                        : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
+                        .font(.system(size: 11)).foregroundStyle(.tertiary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+            }
+            .padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }.buttonStyle(.plain).help(tree.path).disabled(tree.prunable)
+    }
+
+    private func heading(
+        _ text: String, key: String, count: Int, shortcut: KeyEquivalent? = nil, action: (() -> Void)?
+    ) -> some View {
         HStack {
-            Text(text).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-            Spacer()
+            Button { workspace.toggleSection(key) } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: expanded(key) ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold)).frame(width: 10)
+                    Text(text).font(.system(size: 11, weight: .semibold))
+                    Text("\(count)").font(.system(size: 10).monospacedDigit())
+                }
+                .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }.buttonStyle(.plain)
             if let action {
                 let button = Button(action: action) { Image(systemName: "plus") }.buttonStyle(.plain)
                     .disabled(session.operation != nil || (text != "远程" && session.status.unborn))

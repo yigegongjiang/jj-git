@@ -130,29 +130,6 @@ final class Workspace {
         save()
     }
 
-    func setSplit(_ name: String, size: Double) {
-        guard library.splits[name] != size else { return }
-        library.splits[name] = size
-        save()
-    }
-
-    func setWindowFrame(_ frame: WindowFrame) {
-        guard library.window != frame else { return }
-        library.window = frame
-        save()
-    }
-
-    func toggleSidebar() {
-        library.sidebarHidden.toggle()
-        save()
-    }
-
-    func toggleGroup(_ groupID: UUID) {
-        guard let index = library.groups.firstIndex(where: { $0.id == groupID }) else { return }
-        library.groups[index].collapsed.toggle()
-        save()
-    }
-
     func deleteGroup(_ groupID: UUID) {
         library.groups.removeAll { $0.id == groupID }
         for index in library.repositories.indices where library.repositories[index].groupID == groupID {
@@ -386,5 +363,37 @@ extension Workspace {
             error = message
         }
         fileErrors[url.path] = message
+    }
+}
+
+/// Window / sidebar layout state persisted in state.json.
+extension Workspace {
+    func setSplit(_ name: String, size: Double) {
+        guard library.splits[name] != size else { return }
+        library.splits[name] = size
+        save()
+    }
+
+    func setWindowFrame(_ frame: WindowFrame) {
+        guard library.window != frame else { return }
+        library.window = frame
+        save()
+    }
+
+    func toggleSidebar() {
+        library.sidebarHidden.toggle()
+        save()
+    }
+
+    func toggleSection(_ key: String) {
+        let sections = library.collapsedSections
+        library.collapsedSections = sections.contains(key) ? sections.filter { $0 != key } : sections + [key]
+        save()
+    }
+
+    func toggleGroup(_ groupID: UUID) {
+        guard let index = library.groups.firstIndex(where: { $0.id == groupID }) else { return }
+        library.groups[index].collapsed.toggle()
+        save()
     }
 }
