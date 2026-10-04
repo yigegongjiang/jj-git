@@ -25,6 +25,10 @@ final class RepositorySession: Identifiable {
     var selectedFile: FileChange?
     var selectedStaged = false
     var diff: TextDiff?
+    var fileDiffs: [FileDiff] = []
+    var diffScrollID: String?
+    var diffScrollRequest = 0
+    var diffFallback = false
     var selectedLines: Set<Int> = []
     var message = ""
     var amend = false
@@ -43,10 +47,10 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored private var polling: Task<Void, Never>?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var detailTask: Task<Void, Never>?
-    @ObservationIgnored private var diffTask: Task<Void, Never>?
+    @ObservationIgnored var diffTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var referenceKey = ""
-    @ObservationIgnored private var diffGeneration = 0
+    @ObservationIgnored var diffGeneration = 0
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var refreshFailure: String?
 
@@ -160,22 +164,24 @@ final class RepositorySession: Identifiable {
             }
         }
         lastRefreshed = Date()
-        if section == .changes, let selectedFile {
-            let current = status.changes.first { $0.path == selectedFile.path }
-            if let current, selectedStaged ? current.staged : current.unstaged {
-                self.selectedFile = current
-                if changed || operation == nil {
-                    loadFileDiff(clearSelection: changed)
-                }
-            } else {
-                selectFile(nil, staged: selectedStaged)
+        if section == .changes {
+            if changed {
+                selectedLines = []
             }
+            loadDiffOverview(DiffTarget.changes(status))
         }
     }
 }
 
 extension RepositorySession {
     func selectFile(_ file: FileChange?, staged: Bool) {
+        if let file, let entry = fileDiffs.first(where: { $0.target.path == file.path && $0.target.staged == staged }) {
+            focusDiff(entry)
+            diffScrollID = entry.id
+            diffScrollRequest += 1
+            return
+        }
+        fileDiffs = []
         selectedFile = file
         selectedStaged = staged
         selectedLines = []
@@ -185,12 +191,19 @@ extension RepositorySession {
 
     func changeSection(_ section: RepositorySection) {
         self.section = section
+        fileDiffs = []
+        diff = nil
+        diffScrollID = nil
         if section == .changes {
             detailTask?.cancel()
-            selectFile(selectedFile, staged: selectedStaged)
+            loadDiffOverview(DiffTarget.changes(status))
         } else {
             selectCommit(selectedCommit ?? graph.first?.commit)
         }
+    }
+
+    func reloadSelectedDiff() {
+        loadFileDiff(clearSelection: false)
     }
 
     private func loadFileDiff(clearSelection: Bool) {
@@ -229,6 +242,10 @@ extension RepositorySession {
         diffTask?.cancel()
         diffGeneration += 1
         selectedCommit = commit
+        fileDiffs = []
+        diffFallback = false
+        diffScrollID = nil
+        loadingDiff = false
         commitDetail = nil
         selectedCommitFile = nil
         diff = nil
@@ -240,12 +257,19 @@ extension RepositorySession {
                 try Task.checkCancellation()
                 guard selectedCommit?.id == commit.id else { return }
                 commitDetail = detail
-                selectCommitFile(detail.files.first)
+                selectedCommitFile = detail.files.first
+                loadDiffOverview(detail.files.map { DiffTarget(path: $0.path) }, commit: commit)
             } catch is CancellationError { return } catch { self.error = error.localizedDescription }
         }
     }
 
     func selectCommitFile(_ file: CommitFile?) {
+        if let file, let entry = fileDiffs.first(where: { $0.target.path == file.path }) {
+            focusDiff(entry)
+            diffScrollID = entry.id
+            diffScrollRequest += 1
+            return
+        }
         diffTask?.cancel()
         diffGeneration += 1
         let generation = diffGeneration

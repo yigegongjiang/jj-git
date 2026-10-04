@@ -67,12 +67,13 @@ struct TextDiff: Sendable {
         Set(hunks.flatMap(\.lines).filter(\.changed).map(\.id))
     }
 
-    init(_ raw: String) {
+    init(_ raw: String, deadline: ContinuousClock.Instant? = nil) throws {
         self.raw = raw
         var oldLine = 0
         var newLine = 0
         var nextID = 0
-        for line in raw.components(separatedBy: "\n") {
+        for (index, line) in raw.components(separatedBy: "\n").enumerated() {
+            try Self.checkBudget(index: index, deadline: deadline)
             if let hunk = Self.hunk(line, id: hunks.count) {
                 hunks.append(hunk)
                 oldLine = hunk.oldStart
@@ -83,6 +84,7 @@ struct TextDiff: Sendable {
                 hunks[last].lines.append(DiffLine(id: nextID, raw: line,
                                                   oldLine: kind == "+" ? nil : oldLine,
                                                   newLine: kind == "-" ? nil : newLine))
+                maxColumns = max(maxColumns, hunks[last].lines.last?.columns ?? 0)
                 nextID += 1
                 if kind != "+" {
                     oldLine += 1
@@ -96,7 +98,6 @@ struct TextDiff: Sendable {
                 partialRestriction = "文件类型发生变化，请按整个文件操作。"
             }
         }
-        maxColumns = hunks.lazy.flatMap(\.lines).map(\.columns).max() ?? 0
         // 只检查头部与子模块的单块差异；对整个 raw 做子串搜索在大差异上耗时数百毫秒。
         let symlink = headers.contains {
             $0.contains("mode 120000") || $0.hasPrefix("index ") && $0.hasSuffix(" 120000")
@@ -108,6 +109,14 @@ struct TextDiff: Sendable {
         }
         if raw.hasPrefix("diff --cc ") || raw.hasPrefix("diff --combined ") {
             partialRestriction = "请先在编辑器解决冲突，再暂存整个文件。"
+        }
+    }
+
+    private static func checkBudget(index: Int, deadline: ContinuousClock.Instant?) throws {
+        guard index.isMultiple(of: 256) else { return }
+        try Task.checkCancellation()
+        if let deadline, ContinuousClock.now >= deadline {
+            throw CancellationError()
         }
     }
 
@@ -235,5 +244,27 @@ struct TextDiff: Sendable {
         return DiffHunk(id: id, header: line, oldStart: oldStart,
                         oldCount: old.count == 2 ? Int(old[1]) ?? 0 : 1,
                         newStart: newStart, newCount: new.count == 2 ? Int(new[1]) ?? 0 : 1, lines: [])
+    }
+}
+
+struct DiffTarget: Identifiable, Hashable, Sendable {
+    let path: String
+    var file: FileChange?
+    var staged = false
+    var id: String {
+        (staged ? "staged:" : "worktree:") + path
+    }
+
+    static func changes(_ status: WorkingCopyStatus) -> [Self] {
+        status.changes.filter(\.unstaged).map { Self(path: $0.path, file: $0) }
+            + status.changes.filter(\.staged).map { Self(path: $0.path, file: $0, staged: true) }
+    }
+}
+
+struct FileDiff: Identifiable, Sendable {
+    let target: DiffTarget
+    let diff: TextDiff
+    var id: String {
+        target.id
     }
 }

@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.4] - 2026-10-04
+
+### Added
+
+- 本地变更与提交历史默认连续展示全部文件差异; 点击文件跳转, 1 秒预处理超时回退首文件
+
 ## [0.4.3] - 2026-10-04
 
 ### Changed
