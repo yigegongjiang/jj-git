@@ -9,6 +9,13 @@
 		A00000000000000000000001 /* JJGitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* JJGitApp.swift */; };
 		A00000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* ContentView.swift */; };
 		A00000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000015 /* Assets.xcassets */; };
+		9AB4CDCE32DC893B42074938 /* GitProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCE58329C69875AAE8EACB7; };
+		C942AD2480CB244D2A684DE2 /* RepositoryAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE43E248A071C14E28E4A90; };
+		0CCF077B949D11EA8E3C4000 /* RepositoryQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293B110111C33FA69C808F8D; };
+		13D523FCE4A5CB130DC6EB0A /* CommitGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D95CECC2740F25F91795BB; };
+		6B9BBC0F6B91F409C0BA3B93 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06DF6F11D2AE51F2F0D51AC1; };
+		9E04E53E55E8CA86BA0E2563 /* TextDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5357A785B990F1A658FB3269; };
+		01EB25CD658C3D688C5F9B9C /* ShellEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078A4D92F0336100A0040956; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +24,13 @@
 		A00000000000000000000011 /* JJGitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JJGitApp.swift; sourceTree = "<group>"; };
 		A00000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A00000000000000000000013 /* jj-git.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "jj-git.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6FCE58329C69875AAE8EACB7 /* GitProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitProcess.swift; sourceTree = "<group>"; };
+		AEE43E248A071C14E28E4A90 /* RepositoryAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryAction.swift; sourceTree = "<group>"; };
+		293B110111C33FA69C808F8D /* RepositoryQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryQuery.swift; sourceTree = "<group>"; };
+		17D95CECC2740F25F91795BB /* CommitGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommitGraph.swift; sourceTree = "<group>"; };
+		06DF6F11D2AE51F2F0D51AC1 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
+		5357A785B990F1A658FB3269 /* TextDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextDiff.swift; sourceTree = "<group>"; };
+		078A4D92F0336100A0040956 /* ShellEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellEnvironment.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,7 +45,7 @@
 		};
 		A00000000000000000000032 /* jj-git */ = {
 			isa = PBXGroup;
-			children = (A00000000000000000000011 /* JJGitApp.swift */, A00000000000000000000012 /* ContentView.swift */, A00000000000000000000015 /* Assets.xcassets */);
+			children = (0C1AF0384CD8A446FDD75366 /* Native */, C6A2D6A93166D65F6B4EA511 /* Models */, 9BF57C01AC8B42D31A8065C6 /* Commands */, A00000000000000000000011 /* JJGitApp.swift */, A00000000000000000000012 /* ContentView.swift */, A00000000000000000000015 /* Assets.xcassets */);
 			path = "Sources/jj-git";
 			sourceTree = "<group>";
 		};
@@ -41,6 +55,9 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9BF57C01AC8B42D31A8065C6 /* Commands */ = {isa = PBXGroup; children = (6FCE58329C69875AAE8EACB7 /* GitProcess.swift */, AEE43E248A071C14E28E4A90 /* RepositoryAction.swift */, 293B110111C33FA69C808F8D /* RepositoryQuery.swift */); path = Commands; sourceTree = "<group>"; };
+		C6A2D6A93166D65F6B4EA511 /* Models */ = {isa = PBXGroup; children = (17D95CECC2740F25F91795BB /* CommitGraph.swift */, 06DF6F11D2AE51F2F0D51AC1 /* Repository.swift */, 5357A785B990F1A658FB3269 /* TextDiff.swift */); path = Models; sourceTree = "<group>"; };
+		0C1AF0384CD8A446FDD75366 /* Native */ = {isa = PBXGroup; children = (078A4D92F0336100A0040956 /* ShellEnvironment.swift */); path = Native; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -82,7 +99,7 @@
 		A00000000000000000000051 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A00000000000000000000001 /* JJGitApp.swift in Sources */, A00000000000000000000002 /* ContentView.swift in Sources */);
+			files = (01EB25CD658C3D688C5F9B9C /* ShellEnvironment.swift in Sources */, 9E04E53E55E8CA86BA0E2563 /* TextDiff.swift in Sources */, 6B9BBC0F6B91F409C0BA3B93 /* Repository.swift in Sources */, 13D523FCE4A5CB130DC6EB0A /* CommitGraph.swift in Sources */, 0CCF077B949D11EA8E3C4000 /* RepositoryQuery.swift in Sources */, C942AD2480CB244D2A684DE2 /* RepositoryAction.swift in Sources */, 9AB4CDCE32DC893B42074938 /* GitProcess.swift in Sources */, A00000000000000000000001 /* JJGitApp.swift in Sources */, A00000000000000000000002 /* ContentView.swift in Sources */);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
