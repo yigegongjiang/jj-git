@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.4] - 2026-10-04
+
+### Changed
+
+- 窗口位置 / 尺寸与分栏尺寸改存 `state.json`, 不再写入系统偏好设置
+  - `RepositoryLibrary.window` / `.splits`; `SplitPane` 去掉 `autosaveName`, 拖动结束 (`mouseDown` 返回) 写 `Workspace.setSplit`
+  - `WindowFrameKeeper`: `setFrameAutosaveName("")` 关闭 SwiftUI 窗口自动保存, 移动 / 缩放停止 0.5 秒后写 `window`
+  - `isRestorable = false` 会让下次启动不开窗口, 不使用
+
 ## [0.3.3] - 2026-10-04
 
 ### Changed

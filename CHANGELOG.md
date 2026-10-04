@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.4] - 2026-10-04
+
+### Changed
+
+- 窗口位置 / 尺寸与分栏尺寸改存 `state.json`, 不再写入系统偏好设置
+
 ## [0.3.3] - 2026-10-04
 
 ### Changed
