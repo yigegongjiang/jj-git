@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.10] - 2026-10-04
+
+### Fixed
+
+- 失效仓库汇总展示，支持逐项或全部移除；检查包含未打开的仓库，无需反复重启
+  - `Workspace.checkMissingRepositories` 后台检查保存仓库与标签，启动 / 前台 / 状态热加载触发；清理前复查已恢复路径
+
 ## [0.4.9] - 2026-10-04
 
 ### Added

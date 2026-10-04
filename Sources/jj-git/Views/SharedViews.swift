@@ -49,7 +49,6 @@ struct NamePrompt: View {
 
 struct ErrorBanner: View {
     let message: String
-    var remove: (() -> Void)?
     let dismiss: () -> Void
 
     var body: some View {
@@ -57,10 +56,6 @@ struct ErrorBanner: View {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.orange)
             ScrollView { Text(message).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                 .frame(maxHeight: 80)
-            if let remove {
-                Button("从列表移除", action: remove).buttonStyle(.borderless)
-                    .help("移除仓库记录并关闭标签")
-            }
             Button(action: dismiss) { Image(systemName: "xmark") }.buttonStyle(.plain).help("关闭错误提示")
         }
         .font(.ui()).padding(8).background(Theme.orange.opacity(0.12))

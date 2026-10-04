@@ -27,6 +27,7 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             workspace.selected?.refresh()
+            workspace.checkMissingRepositories()
         }
     }
 
@@ -40,15 +41,11 @@ struct ContentView: View {
             }
             .background(Theme.titleBar)
             ThemedDivider()
+            if !workspace.missingRepositories.isEmpty {
+                MissingRepositoriesBanner(workspace: workspace)
+            }
             if let error = workspace.error {
-                if let path = workspace.missingRepositoryPath {
-                    ErrorBanner(message: error, remove: {
-                        workspace.error = nil
-                        workspace.remove(path)
-                    }, dismiss: { workspace.error = nil })
-                } else {
-                    ErrorBanner(message: error) { workspace.error = nil }
-                }
+                ErrorBanner(message: error) { workspace.error = nil }
             }
             if let session = workspace.selected {
                 RepositoryView(workspace: workspace, session: session).id(session.id)

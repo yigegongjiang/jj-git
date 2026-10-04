@@ -166,3 +166,35 @@ struct RepositoryTabs: View {
         }.frame(height: 32)
     }
 }
+
+struct MissingRepositoriesBanner: View {
+    let workspace: Workspace
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label("\(workspace.missingRepositories.count) 个仓库路径不存在", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.orange)
+                Spacer()
+                Button("重新检查") { workspace.checkMissingRepositories() }
+                    .help("重新检查全部仓库路径")
+                Button("全部移除") { workspace.removeMissingRepositories(workspace.missingRepositories) }
+                    .help("移除全部失效仓库记录并关闭标签")
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(workspace.missingRepositories, id: \.self) { path in
+                        HStack {
+                            Text(path).textSelection(.enabled).lineLimit(1).truncationMode(.middle).help(path)
+                            Spacer(minLength: 8)
+                            Button("从列表移除") { workspace.removeMissingRepositories([path]) }
+                                .help("移除仓库记录并关闭标签：\(path)")
+                                .disabled(workspace.sessions[path]?.operation != nil)
+                        }
+                    }
+                }
+            }.frame(height: CGFloat(min(workspace.missingRepositories.count, 4)) * 24)
+        }
+        .buttonStyle(.borderless).font(.ui()).padding(8).background(Theme.orange.opacity(0.12))
+    }
+}

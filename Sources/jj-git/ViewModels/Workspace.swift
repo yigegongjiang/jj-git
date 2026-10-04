@@ -9,11 +9,9 @@ final class Workspace {
     var opening: Set<String> = []
     var scanning = false
     var scanProgress = ""
-    var error: String? {
-        didSet { missingRepositoryPath = nil }
-    }
-
-    private(set) var missingRepositoryPath: String?
+    var error: String?
+    var missingRepositories: [String] = []
+    @ObservationIgnored var repositoryCheckTask: Task<Void, Never>?
     @ObservationIgnored private var configMonitor: RepositoryMonitor?
     /// 最近一次读写的文件内容，用于忽略自身写入触发的监听事件。
     @ObservationIgnored private var configData: Data?
@@ -69,13 +67,9 @@ final class Workspace {
             if shouldSelect {
                 select(location.root)
             }
+            missingRepositories.removeAll { $0 == path || $0 == location.root }
             save()
-        } catch {
-            self.error = "\(path)\n\(error.localizedDescription)"
-            if SavedRepository.isMissing(path) {
-                missingRepositoryPath = path
-            }
-        }
+        } catch { reportOpenFailure(error, path: path) }
     }
 
     func select(_ path: String) {
@@ -108,6 +102,7 @@ final class Workspace {
         guard sessions[path]?.operation == nil else { return }
         close(path)
         library.repositories.removeAll { $0.path == path }
+        missingRepositories.removeAll { $0 == path }
         save()
     }
 
@@ -335,6 +330,7 @@ extension Workspace {
     private func apply(_ value: RepositoryLibrary) {
         let previous = selected
         library = value
+        checkMissingRepositories()
         for (path, session) in sessions where !library.tabs.contains(path) {
             if session.operation != nil {
                 library.tabs.append(path)
