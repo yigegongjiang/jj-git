@@ -104,16 +104,41 @@ struct RepositorySidebar: View {
     @Bindable var session: RepositorySession
     @Binding var dialog: RepositoryDialog?
 
+    /// Unstaged (orange) / staged (green) file counts; same split as the change lists.
+    @ViewBuilder private var changeCounts: some View {
+        let changes = session.status.changes
+        let unstaged = changes.count(where: \.unstaged)
+        let staged = changes.count(where: \.staged)
+        if unstaged > 0 {
+            countBadge(unstaged, color: .orange).help("未暂存 \(unstaged) 个文件")
+        }
+        if staged > 0 {
+            countBadge(staged, color: .green).help("已暂存 \(staged) 个文件")
+        }
+    }
+
+    private func countBadge(_ count: Int, color: Color) -> some View {
+        Text("\(count)").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(.white)
+            .padding(.horizontal, 5).frame(minWidth: 16, minHeight: 15)
+            .background(color, in: Capsule())
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 7) {
                 ForEach(RepositorySection.allCases) { section in
                     Button { session.changeSection(section) } label: {
-                        Label(
-                            section.rawValue,
-                            systemImage: section == .changes ? "square.and.pencil" : "clock.arrow.circlepath"
-                        )
-                        .foregroundStyle(session.section == section ? Color.accentColor : Color.primary)
+                        HStack(spacing: 4) {
+                            Label(
+                                section.rawValue,
+                                systemImage: section == .changes ? "square.and.pencil" : "clock.arrow.circlepath"
+                            )
+                            .foregroundStyle(session.section == section ? Color.accentColor : Color.primary)
+                            Spacer(minLength: 0)
+                            if section == .changes {
+                                changeCounts
+                            }
+                        }
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                     }.buttonStyle(.plain).padding(.vertical, 3)
                 }
