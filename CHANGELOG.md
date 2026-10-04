@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.21] - 2026-10-04
+
+### Added
+
+- 顶部「重启应用」右侧新增「性能」面板：查看 CPU、内存 (含峰值) 与各标签内存估算；点击时测量一次，不在后台持续采样
+
 ## [0.4.20] - 2026-10-04
 
 ### Fixed

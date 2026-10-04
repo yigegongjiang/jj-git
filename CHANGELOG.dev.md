@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.21] - 2026-10-04
+
+### Added
+
+- 顶部「重启应用」右侧新增「性能」面板：查看 CPU、内存 (含峰值) 与各标签内存估算；点击时测量一次，不在后台持续采样
+  - `ProcessSample`：`proc_pid_rusage(RUSAGE_INFO_V4)` 取 `ri_phys_footprint` / 峰值 / 常驻，`getrusage(SELF/CHILDREN)` 两次采样差值算 CPU，`proc_pidinfo` 取线程数
+  - `SessionSnapshot.usage()`：主线程拷贝 session 数据，`Task.detached` 估算字符串字节 + 元素 stride；单文件差异与总览共享时不重复计
+  - `PerformanceView` popover：`.task(id:)` 打开 / 重新测量时执行一次，关闭即取消
+
 ## [0.4.20] - 2026-10-04
 
 ### Fixed
