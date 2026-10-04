@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.2] - 2026-10-04
+
+### Added
+
+- 差异默认自动换行, 长行无需横向滚动; 标题栏取消「自动换行」恢复横向滚动, 选择全局记住
+  - `DiffView` `@AppStorage("jj-git.diffWrap")` 默认 true; 换行时内容宽度 = 视口, 只纵向滚动, 行高随内容
+  - `DiffLineView` 首行基线对齐行号; 实测 20 万行差异换行 / 不换行滚动卡顿无明显差异
+
 ## [0.4.1] - 2026-10-04
 
 ### Changed
