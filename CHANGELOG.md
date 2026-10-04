@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.20] - 2026-10-04
+
+### Fixed
+
+- 本地变更「全部差异」上下滚动卡顿：文件多 / 差异大时滚动保持顺畅
+
 ## [0.4.19] - 2026-10-04
 
 ### Added

@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.20] - 2026-10-04
+
+### Fixed
+
+- 本地变更「全部差异」上下滚动卡顿：文件多 / 差异大时滚动保持顺畅
+  - `DiffView`：文件头 / 块头 / 行扁平化进单个 `List`（`NSTableView` 复用行），行数组按差异内容缓存；替代嵌套 `LazyVStack`
+  - `SplitPane.sizeThatFits` 直接返回提议尺寸，消除滚动时整棵子树的 `fittingSize` Auto Layout 测量
+
 ## [0.4.19] - 2026-10-04
 
 ### Added
