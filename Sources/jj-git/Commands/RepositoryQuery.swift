@@ -83,13 +83,17 @@ struct RepositoryQuery: Sendable {
         return CommitDetail(message: values.0.text, files: changes)
     }
 
-    func commitDiff(_ commit: GitCommit, path: String) async throws -> TextDiff {
+    func commitDiff(
+        _ commit: GitCommit, path: String, deadline: ContinuousClock.Instant? = nil
+    ) async throws -> TextDiff {
         let arguments = ["show", "--format=", "--first-parent", "--root"] + Self.diffOptions + [commit.hash, "--", path]
-        return try await TextDiff(run(arguments).checkedText())
+        let output = try await run(arguments)
+        return try TextDiff(output.checkedText(), deadline: deadline)
     }
 
     /// 轮询刷新时内容通常未变：原文相同直接复用 previous，跳过大差异的重新解析。
-    func diff(_ file: FileChange, staged: Bool, reusing previous: TextDiff? = nil) async throws -> TextDiff {
+    func diff(_ file: FileChange, staged: Bool, reusing previous: TextDiff? = nil,
+              deadline: ContinuousClock.Instant? = nil) async throws -> TextDiff {
         var arguments = ["diff"] + Self.diffOptions
         if file.untracked {
             arguments += ["--no-index", "--", "/dev/null", file.path]
@@ -104,7 +108,45 @@ struct RepositoryQuery: Sendable {
         if let previous, previous.raw.utf8.elementsEqual(text.utf8) {
             return previous
         }
-        return TextDiff(text)
+        return try TextDiff(text, deadline: deadline)
+    }
+
+    /// 顺序读取限制进程数；统一预算包含读取、解析与宽度计算，取消会终止 Git。
+    func allDiffs(
+        _ targets: [DiffTarget], commit: GitCommit?, reusing previous: [FileDiff]
+    ) async throws -> [FileDiff]? {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+        return try await withThrowingTaskGroup(of: [FileDiff]?.self) { group in
+            group.addTask {
+                var result: [FileDiff] = []
+                var bytes = 0
+                let cached = Dictionary(uniqueKeysWithValues: previous.map { ($0.id, $0.diff) })
+                for target in targets {
+                    try Task.checkCancellation()
+                    guard ContinuousClock.now < deadline else { return nil }
+                    let diff: TextDiff
+                    if let commit {
+                        diff = try await commitDiff(commit, path: target.path, deadline: deadline)
+                    } else if let file = target.file {
+                        diff = try await self.diff(file, staged: target.staged, reusing: cached[target.id],
+                                                   deadline: deadline)
+                    } else {
+                        return nil
+                    }
+                    bytes += diff.raw.utf8.count
+                    guard bytes <= AppConfig.current.git.outputLimitMiB * 1024 * 1024,
+                          ContinuousClock.now < deadline else { return nil }
+                    result.append(FileDiff(target: target, diff: diff))
+                }
+                return result
+            }
+            group.addTask {
+                try await ContinuousClock().sleep(until: deadline)
+                return nil
+            }
+            defer { group.cancelAll() }
+            return try await group.next() ?? nil
+        }
     }
 
     func lastMessage() async throws -> String {

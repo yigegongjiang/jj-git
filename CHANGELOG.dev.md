@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.7] - 2026-10-04
+
+### Added
+
+- 本地变更与提交历史默认连续展示全部文件差异; 点击文件跳转, 1 秒预处理超时回退首文件
+  - `RepositoryQuery.allDiffs`: 统一读取 / 解析预算 + 取消 Git; 累计输出上限, `LazyVStack` 按需绘制; 行选择按文件与暂存状态隔离
+
 ## [0.4.6] - 2026-10-04
 
 ### Fixed
