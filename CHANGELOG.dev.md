@@ -7,6 +7,17 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.1] - 2026-10-04
+
+### Changed
+
+- 去掉窗口标题栏: 仓库标签与窗口按钮同一行, 顶部少占一行; 空白处可拖动 / 双击缩放窗口
+  - `.windowStyle(.hiddenTitleBar)`; `HSplitView` 两栏各自 `.ignoresSafeArea(.container, edges: .top)`; `WindowDragArea` (NSView `performDrag` + `AppleActionOnDoubleClick`)
+- 左侧仓库栏可点击按钮或 ⌃⌘S 显示 / 隐藏, 重启后保持
+  - `RepositoryLibrary.sidebarHidden` 存 `UserDefaults`; `CommandGroup(replacing: .sidebar)`; 按钮位置两种状态一致
+- 工具栏更紧凑, 去掉无用的应用名称显示
+  - 仓库工具栏 38 -> 32pt; 移除侧栏「仓库」标题行 (新建分组移入顶部条) 与空状态应用名
+
 ## [0.2.0] - 2026-10-04
 
 ### Added
