@@ -45,7 +45,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
-- 持久化: `~/.config/jj-git/` (Debug: `jj-git-debug/`; 环境变量 `JJGIT_CONFIG_DIR` 覆盖, 首次复制 `jj-git-debug/`) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
+- 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
   - `config.json`: 设置 (字体 / 编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
   - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改同步开关标签
   - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅

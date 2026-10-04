@@ -5,6 +5,8 @@ set -euo pipefail
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 built_app="$project_dir/build/Build/Products/Debug/jj-git Debug.app"
+config_dir="$project_dir/build/Build/Products/Debug/debug-config"
+test_repo="$(dirname "$(git -C "$project_dir" rev-parse --path-format=absolute --git-common-dir)")/jj-git-test-project"
 executable="$built_app/Contents/MacOS/jj-git Debug"
 tag="$(basename "$project_dir")"
 
@@ -38,8 +40,13 @@ xcodebuild -project jj-git.xcodeproj -scheme jj-git \
   build
 
 quit_instances
-# -n: 同一 bundle id 允许多实例并存; 数据目录放在本 worktree 的 build 下, 随 worktree 删除。
-open -n --env "JJGIT_CONFIG_DIR=$project_dir/build/debug-config" --env "JJGIT_DEBUG_TAG=$tag" "$built_app"
+# 首次启动 (无数据目录) 打开测试仓库。
+args=()
+if [ ! -d "$config_dir" ] && [ -d "$test_repo" ]; then
+  args=(--args "$test_repo")
+fi
+# -n: 同一 bundle id 允许多实例并存。
+open -n --env "JJGIT_DEBUG_TAG=$tag" "$built_app" ${args[@]+"${args[@]}"}
 for _ in $(seq 50); do
   pid="$(instance_pids)"
   if [ -n "$pid" ]; then
