@@ -169,6 +169,11 @@ struct SplitPane<First: View, Second: View>: NSViewRepresentable {
             SplitPaneContent(workspace: workspace, content: second)
     }
 
+    /// 分栏填满父容器；默认 fittingSize 会在滚动时递归测量全部子视图及约束。
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView _: SplitPaneView, context _: Context) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
     private static func host<V: View>(_ view: V) -> NSHostingView<V> {
         let host = NSHostingView(rootView: view)
         // 尺寸由分栏决定，避免 SwiftUI 内容尺寸约束与拖动冲突。
