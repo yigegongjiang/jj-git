@@ -19,6 +19,7 @@ struct ContentView: View {
         .themed()
         .environment(\.workspace, workspace)
         .background(WindowFrameKeeper(workspace: workspace))
+        .background(SectionTabKey(workspace: workspace))
         .task {
             await workspace.restore()
             for path in ProcessInfo.processInfo.arguments.dropFirst() where path.hasPrefix("/") {

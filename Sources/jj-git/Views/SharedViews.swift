@@ -280,3 +280,47 @@ struct WindowFrameKeeper: NSViewRepresentable {
         }
     }
 }
+
+/// 主窗口内单按 Tab 在「提交历史」/「本地变更」间切换。
+/// 不用菜单快捷键：菜单无修饰键快捷键先于文本视图触发，会吞掉提交信息 / 输入框里的 Tab。
+struct SectionTabKey: NSViewRepresentable {
+    let workspace: Workspace
+
+    func makeNSView(context _: Context) -> MonitorView {
+        let view = MonitorView()
+        view.workspace = workspace
+        return view
+    }
+
+    func updateNSView(_: MonitorView, context _: Context) {
+    }
+
+    final class MonitorView: NSView {
+        weak var workspace: Workspace?
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            monitor = nil
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                let consumed = MainActor.assumeIsolated { self?.toggle(event) ?? false }
+                return consumed ? nil : event
+            }
+        }
+
+        /// 仅本窗口无弹窗、焦点不在可编辑文本时生效；带修饰键（⌃Tab 切仓库标签等）原样放行。
+        private func toggle(_ event: NSEvent) -> Bool {
+            guard event.keyCode == 48, !event.isARepeat,
+                  event.modifierFlags.isDisjoint(with: [.command, .option, .control, .shift]),
+                  let window, event.window === window, window.attachedSheet == nil,
+                  (window.firstResponder as? NSTextView)?.isEditable != true,
+                  let session = workspace?.selected else { return false }
+            session.changeSection(session.section == .history ? .changes : .history)
+            return true
+        }
+    }
+}

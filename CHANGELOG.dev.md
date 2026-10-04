@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.14] - 2026-10-04
+
+### Added
+
+- 单按 Tab 在「提交历史」/「本地变更」间切换; 提交信息与弹窗输入框内 Tab 行为不变
+  - `SectionTabKey` 本地 keyDown 监听: 仅主窗口无 sheet / 焦点非可编辑 `NSTextView` / 无修饰键时生效
+
 ## [0.4.13] - 2026-10-04
 
 ### Changed

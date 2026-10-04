@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.14] - 2026-10-04
+
+### Added
+
+- 单按 Tab 在「提交历史」/「本地变更」间切换; 提交信息与弹窗输入框内 Tab 行为不变
+
 ## [0.4.13] - 2026-10-04
 
 ### Changed
