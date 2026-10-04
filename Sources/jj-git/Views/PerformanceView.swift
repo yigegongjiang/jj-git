@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// 顶部「性能」弹出面板：打开或点「重新测量」时测量一次，不持续采样。
+/// 顶部「性能」面板：打开或点「重新测量」时测量一次，不持续采样。
 struct PerformanceView: View {
     let workspace: Workspace
     @State private var sample: ProcessSample?
     @State private var cpu: Double?
-    @State private var childCPU: Double?
     @State private var tabs: [TabUsage] = []
     @State private var measuring = false
     @State private var request = 0
     @State private var measuredAt: Date?
+    @Environment(\.dismiss) private var dismiss
 
     private struct TabUsage: Identifiable {
         let path: String
@@ -29,7 +29,9 @@ struct PerformanceView: View {
                 metric("内存峰值", sample.map { Self.bytes($0.peakFootprint) } ?? "—", help: "启动以来的最大内存")
                 metric("常驻内存", sample.map { Self.bytes($0.resident) } ?? "—", help: "当前驻留物理内存的页面 (RSS)")
                 metric("线程", sample.map { "\($0.threads)" } ?? "—", help: "本进程线程数")
-                metric("Git 子进程 CPU", childCPU.map(Self.percent) ?? "—", help: "测量的 1 秒内结束的 Git 命令累计占用")
+                metric("累计 CPU 时间", sample.map { Self.duration($0.cpuSeconds) } ?? "—", help: "启动以来本进程 CPU 时间")
+                metric("Git 累计 CPU 时间", sample.map { Self.duration($0.childCPUSeconds) } ?? "—",
+                       help: "启动以来已结束的 Git 命令 CPU 时间合计")
             }
             ThemedDivider()
             Text("标签内存（估算）").font(.ui(0, weight: .semibold))
@@ -61,6 +63,7 @@ struct PerformanceView: View {
                 Text(status).foregroundStyle(.secondary)
                 Spacer()
                 Button("重新测量") { request += 1 }.disabled(measuring)
+                Button("关闭") { dismiss() }.keyboardShortcut(.cancelAction)
             }
         }
         .padding(12).frame(width: 460).themed()
@@ -101,7 +104,6 @@ struct PerformanceView: View {
         do { try await Task.sleep(for: .seconds(1)) } catch { return }
         guard let end = ProcessSample.current() else { return }
         cpu = end.cpuPercent(since: start)
-        childCPU = end.cpuPercent(since: start, children: true)
         sample = end
         measuredAt = Date()
     }
@@ -122,6 +124,10 @@ struct PerformanceView: View {
 
     private static func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(clamping: value), countStyle: .memory)
+    }
+
+    private static func duration(_ seconds: Double) -> String {
+        seconds < 60 ? String(format: "%.1f 秒", seconds) : String(format: "%.1f 分", seconds / 60)
     }
 
     private static func percent(_ value: Double) -> String {

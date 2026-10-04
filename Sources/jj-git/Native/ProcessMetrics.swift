@@ -38,11 +38,10 @@ struct ProcessSample: Sendable {
     }
 
     /// 相对上一次采样的 CPU 占用率，单核满载为 100%，多核可超过。
-    func cpuPercent(since previous: Self, children: Bool = false) -> Double {
+    func cpuPercent(since previous: Self) -> Double {
         let elapsed = Double(uptime - previous.uptime) / 1_000_000_000
         guard elapsed > 0 else { return 0 }
-        let used = children ? childCPUSeconds - previous.childCPUSeconds : cpuSeconds - previous.cpuSeconds
-        return max(0, used / elapsed * 100)
+        return max(0, (cpuSeconds - previous.cpuSeconds) / elapsed * 100)
     }
 
     private static func seconds(_ value: timeval) -> Double {
