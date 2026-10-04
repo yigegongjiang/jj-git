@@ -26,16 +26,14 @@ struct RepositoryView: View {
                     Button("打开终端") { workspace.openTerminal(session.location.root) }
                 }.font(.caption).padding(8).background(.orange.opacity(0.1))
             }
-            HSplitView {
+            SplitPane(autosave: "repository.sidebar", initial: 170, minimum: (130, 480)) {
                 RepositorySidebar(workspace: workspace, session: session, dialog: $dialog)
-                    .frame(minWidth: 150, idealWidth: 170, maxWidth: 200)
-                Group {
-                    if session.section == .changes {
-                        ChangesView(workspace: workspace, session: session)
-                    } else {
-                        HistoryView(session: session, dialog: $dialog)
-                    }
-                }.frame(minWidth: 530, maxWidth: .infinity, maxHeight: .infinity)
+            } second: {
+                if session.section == .changes {
+                    ChangesView(workspace: workspace, session: session)
+                } else {
+                    HistoryView(session: session, dialog: $dialog)
+                }
             }
             Divider()
             statusBar

@@ -112,3 +112,93 @@ struct SectionHeading<Trailing: View>: View {
         .padding(.horizontal, 10).frame(height: 28).background(.quaternary.opacity(0.4))
     }
 }
+
+/// 可拖动分栏，位置按 `autosave` 写入 UserDefaults，切换标签 / 页面 / 重启后保留。
+/// SwiftUI HSplitView 首次布局把首栏撑到 maxWidth 且不记忆位置，因此用 NSSplitView。
+/// 不用 NSSplitViewController：其约束会让嵌套在同向分栏里的分割线无法拖动。
+/// 各栏内容在独立 NSHostingView 中求值：闭包内 MUST NOT 读取外层 @State（不会触发刷新），只传 Binding。
+struct SplitPane<First: View, Second: View>: NSViewRepresentable {
+    enum Pinned { case first, second }
+
+    let autosave: String
+    var vertical = false
+    /// 窗口缩放时保持尺寸的一栏；nil 时两栏按比例缩放。`initial` 为它（nil 时为首栏）的默认尺寸。
+    var pinned: Pinned? = .first
+    let initial: CGFloat
+    var minimum: (first: CGFloat, second: CGFloat) = (120, 120)
+    @ViewBuilder let first: () -> First
+    @ViewBuilder let second: () -> Second
+
+    func makeNSView(context _: Context) -> SplitPaneView {
+        let view = SplitPaneView()
+        view.isVertical = !vertical
+        view.dividerStyle = .thin
+        view.delegate = view
+        view.addArrangedSubview(Self.host(SplitPaneContent(content: first)))
+        view.addArrangedSubview(Self.host(SplitPaneContent(content: second)))
+        view.pinned = pinned.map { $0 == .first ? 0 : 1 }
+        view.minimum = minimum
+        view.initial = pinned == .second ? -initial : initial
+        // 须在添加分栏之后设置，否则不会恢复已保存的位置。
+        // 首次缩放就会写入 0 尺寸，因此在此之前判断是否已有保存值。
+        let name = "jj-git." + autosave
+        view.placed = UserDefaults.standard.object(forKey: "NSSplitView Subview Frames " + name) != nil
+        view.autosaveName = name
+        return view
+    }
+
+    func updateNSView(_ view: SplitPaneView, context _: Context) {
+        let panes = view.arrangedSubviews
+        (panes[0] as? NSHostingView<SplitPaneContent<First>>)?.rootView = SplitPaneContent(content: first)
+        (panes[1] as? NSHostingView<SplitPaneContent<Second>>)?.rootView = SplitPaneContent(content: second)
+    }
+
+    private static func host<V: View>(_ view: V) -> NSHostingView<V> {
+        let host = NSHostingView(rootView: view)
+        // 尺寸由分栏决定，避免 SwiftUI 内容尺寸约束与拖动冲突。
+        host.sizingOptions = []
+        return host
+    }
+}
+
+/// 闭包在分栏自己的 body 中执行，使其中读取的 @Observable 状态由该分栏追踪刷新。
+struct SplitPaneContent<Content: View>: View {
+    let content: () -> Content
+    var body: some View {
+        content().frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+final class SplitPaneView: NSSplitView, NSSplitViewDelegate {
+    var minimum: (first: CGFloat, second: CGFloat) = (0, 0)
+    var pinned: Int?
+    /// 首栏默认尺寸；负数表示次栏默认尺寸。
+    var initial: CGFloat = 0
+    /// 已恢复保存值或已放置默认尺寸。
+    var placed = false
+
+    private var length: CGFloat {
+        isVertical ? bounds.width : bounds.height
+    }
+
+    override func layout() {
+        super.layout()
+        guard !placed, length > abs(initial) else { return }
+        placed = true
+        setPosition(initial >= 0 ? initial : length + initial - dividerThickness, ofDividerAt: 0)
+    }
+
+    /// 非 Auto Layout 下 holdingPriority 不生效，窗口缩放时由此固定 pinned 栏。
+    func splitView(_: NSSplitView, shouldAdjustSizeOfSubview view: NSView) -> Bool {
+        guard let pinned else { return true }
+        return view !== arrangedSubviews[pinned]
+    }
+
+    func splitView(_: NSSplitView, constrainMinCoordinate proposed: CGFloat, ofSubviewAt _: Int) -> CGFloat {
+        max(proposed, minimum.first)
+    }
+
+    func splitView(_: NSSplitView, constrainMaxCoordinate proposed: CGFloat, ofSubviewAt _: Int) -> CGFloat {
+        min(proposed, length - minimum.second - dividerThickness)
+    }
+}

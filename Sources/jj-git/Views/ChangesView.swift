@@ -5,17 +5,19 @@ struct ChangesView: View {
     @Bindable var session: RepositorySession
 
     var body: some View {
-        HSplitView {
-            VStack(spacing: 0) {
-                VSplitView {
+        SplitPane(autosave: "changes.files", initial: 300, minimum: (220, 290)) {
+            SplitPane(autosave: "changes.composer", vertical: true, pinned: .second, initial: 190,
+                      minimum: (180, 150)) {
+                SplitPane(autosave: "changes.lists", vertical: true, pinned: nil, initial: 260, minimum: (90, 90)) {
                     ChangeList(workspace: workspace, session: session, staged: false)
+                } second: {
                     ChangeList(workspace: workspace, session: session, staged: true)
-                }.frame(minHeight: 180, maxHeight: .infinity)
-                Divider()
+                }
+            } second: {
                 CommitComposer(session: session)
-            }.frame(minWidth: 240, idealWidth: 280, maxWidth: 330)
+            }
+        } second: {
             DiffView(session: session, editable: true)
-                .frame(minWidth: 290, maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
@@ -98,23 +100,23 @@ struct ChangeList: View {
                     }
                 }
             }
-        }.frame(minHeight: 90)
-            .confirmationDialog("放弃未暂存变更？", isPresented: Binding(
-                get: { !discarding.isEmpty }, set: {
-                    if !$0 {
-                        discarding = []
-                    }
-                }
-            ), titleVisibility: .visible) {
-                Button("放弃 \(discarding.count) 个文件的变更", role: .destructive) {
-                    session.perform(.discard(discarding), title: "放弃变更")
+        }
+        .confirmationDialog("放弃未暂存变更？", isPresented: Binding(
+            get: { !discarding.isEmpty }, set: {
+                if !$0 {
                     discarding = []
                 }
-                Button("取消", role: .cancel) { discarding = [] }
-            } message: {
-                Text(discarding.prefix(8).map(\.path).joined(separator: "\n")
-                    + (discarding.contains(where: \.untracked) ? "\n未跟踪文件将移至废纸篓。" : ""))
             }
+        ), titleVisibility: .visible) {
+            Button("放弃 \(discarding.count) 个文件的变更", role: .destructive) {
+                session.perform(.discard(discarding), title: "放弃变更")
+                discarding = []
+            }
+            Button("取消", role: .cancel) { discarding = [] }
+        } message: {
+            Text(discarding.prefix(8).map(\.path).joined(separator: "\n")
+                + (discarding.contains(where: \.untracked) ? "\n未跟踪文件将移至废纸篓。" : ""))
+        }
     }
 
     @ViewBuilder
@@ -166,7 +168,7 @@ struct CommitComposer: View {
             TextEditor(text: $session.message)
                 .font(.system(size: 12)).scrollContentBackground(.hidden)
                 .padding(4).background(.background).overlay(Rectangle().stroke(.quaternary))
-                .frame(minHeight: 72, idealHeight: 96, maxHeight: 140)
+                .frame(minHeight: 60, maxHeight: .infinity)
                 .accessibilityLabel("提交信息")
             if session.status.conflicts {
                 Text("存在冲突，请解决后暂存。").font(.caption).foregroundStyle(.orange)
