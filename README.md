@@ -31,12 +31,12 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送
 - 同步: Fetch ⇧⌘F / Pull (rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
 - 工具: 终端 ⇧⌘T (iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
-- 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库; 签名固定, 升级后不再询问
+- 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
 
 ## 架构
 
 - Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS 14+; 无第三方依赖
-- 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app`; 工程默认 ad-hoc, 脚本以参数传入 Team 用 Apple Development 签名 (TCC 授权跨构建保留)
+- 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / Apple Development 签名
 - Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
 - 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时 5 秒兜底轮询; 回到前台刷新
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具

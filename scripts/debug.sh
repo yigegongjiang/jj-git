@@ -1,12 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# 用固定 Team 签名: TCC 按证书识别 App, 重新编译后「文稿」等授权不失效。
-if [[ $# -ne 1 || -z "$1" ]]; then
-  echo "用法: $0 <DEVELOPMENT_TEAM>" >&2
-  exit 64
-fi
-team="$1"
+team="${1:?用法: $0 <DEVELOPMENT_TEAM>}"
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 built_app="$project_dir/build/Build/Products/Debug/jj-git Debug.app"
