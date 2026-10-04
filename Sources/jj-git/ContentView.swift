@@ -33,6 +33,7 @@ struct ContentView: View {
             workspace.selected?.refresh()
             workspace.checkMissingRepositories()
         }
+        .sheet(isPresented: $workspace.showingRecent) { RecentRepositoriesView(workspace: workspace) }
     }
 
     private var main: some View {

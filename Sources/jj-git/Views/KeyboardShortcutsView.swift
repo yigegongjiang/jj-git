@@ -69,6 +69,7 @@ struct KeyboardShortcutsView: View {
         ShortcutSection(title: "仓库与窗口", entries: [
             Shortcut("打开仓库", "⌘O"),
             Shortcut("扫描目录", "⇧⌘O"),
+            Shortcut("最近仓库", "⌘P", detail: "输入筛选，↑↓ 选择，回车打开", searchTerms: "recent quick open"),
             Shortcut("关闭仓库标签", "⌘W", detail: "当前仓库无操作进行时"),
             Shortcut("下一个仓库标签", "⌘⌥→ / ⌃Tab", searchTerms: "right tab"),
             Shortcut("上一个仓库标签", "⌘⌥← / ⇧⌃Tab", searchTerms: "left tab"),

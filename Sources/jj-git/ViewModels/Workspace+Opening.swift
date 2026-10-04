@@ -14,6 +14,26 @@ extension Workspace {
         }
     }
 
+    /// ⌘P 列表：按衰减后的使用热度排序，未使用过的按标签 / 仓库列表顺序补足；排除当前与失效仓库。
+    /// `query` 非空时按仓库名（忽略大小写）筛选。
+    func recentRepositories(matching query: String = "") -> [SavedRepository] {
+        let now = Date().timeIntervalSince1970
+        let tabs = Dictionary(library.tabs.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        let candidates = library.repositories.enumerated().filter {
+            $0.element.path != library.selectedPath && !missingRepositories.contains($0.element.path) &&
+                (query.isEmpty || $0.element.name.localizedCaseInsensitiveContains(query))
+        }
+        let ranked = candidates.map { (offset: $0.offset, repository: $0.element, usage: $0.element.usage(at: now)) }
+            .sorted { lhs, rhs in
+                if lhs.usage != rhs.usage {
+                    return lhs.usage > rhs.usage
+                }
+                let left = tabs[lhs.repository.path] ?? Int.max, right = tabs[rhs.repository.path] ?? Int.max
+                return left != right ? left < right : lhs.offset < rhs.offset
+            }
+        return ranked.prefix(config.tabs.recentCount).map(\.repository)
+    }
+
     func reportOpenFailure(_ failure: Error, path: String) {
         if SavedRepository.isMissing(path) {
             if !missingRepositories.contains(path) {

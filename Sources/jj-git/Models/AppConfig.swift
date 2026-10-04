@@ -49,6 +49,8 @@ struct AppConfig: Codable, Equatable, Sendable {
     struct Tabs: Codable, Equatable, Sendable {
         /// 未激活标签的 session 保留时间；超时保留标签位置，点击重新加载。
         var idleUnloadSeconds = 180
+        /// ⌘P 最近仓库列表显示条数。
+        var recentCount = 15
     }
 
     struct Appearance: Codable, Equatable, Sendable {
@@ -104,6 +106,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.diff.previewTimeoutMilliseconds = diff.previewTimeoutMilliseconds.clamped(100...30000)
         value.refresh.pollSeconds = refresh.pollSeconds.clamped(1...600)
         value.tabs.idleUnloadSeconds = tabs.idleUnloadSeconds.clamped(1...86400)
+        value.tabs.recentCount = tabs.recentCount.clamped(1...100)
         value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)
         return value
     }

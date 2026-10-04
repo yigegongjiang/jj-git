@@ -21,12 +21,29 @@ struct RepositoryGroup: Identifiable, Codable, Equatable, Sendable {
 struct SavedRepository: Identifiable, Codable, Equatable, Sendable {
     let path: String
     var groupID: UUID?
+    /// 使用热度：每次切换到该仓库 +1，按半衰期指数衰减；值为 `usedAt` 时刻的分数。
+    var usage: Double?
+    /// 最近一次切换到该仓库的时间（Unix 秒）。
+    var usedAt: Double?
     var id: String {
         path
     }
 
     var name: String {
         URL(fileURLWithPath: path).lastPathComponent
+    }
+
+    static let usageHalfLife: Double = 3 * 24 * 3600
+
+    /// 衰减到 `now` 的热度；从未使用为 0。
+    func usage(at now: Double) -> Double {
+        guard let usage, let usedAt else { return 0 }
+        return usage * pow(0.5, max(0, now - usedAt) / Self.usageHalfLife)
+    }
+
+    mutating func recordUse(at now: Double) {
+        usage = usage(at: now) + 1
+        usedAt = now
     }
 }
 

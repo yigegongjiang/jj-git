@@ -18,6 +18,12 @@ struct WorkspaceCommands: Commands {
                 "o",
                 modifiers: [.command, .shift]
             )
+            // 已有弹窗时 SwiftUI 不会叠加第二个 sheet。
+            Button("最近仓库…") {
+                if NSApp.mainWindow?.attachedSheet == nil {
+                    workspace.showingRecent = true
+                }
+            }.keyboardShortcut("p")
             Button("关闭仓库标签") {
                 if let path = workspace.library.selectedPath {
                     workspace.close(path)

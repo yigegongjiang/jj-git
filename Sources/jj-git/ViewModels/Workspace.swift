@@ -12,6 +12,8 @@ final class Workspace {
     var scanProgress = ""
     var error: String?
     var missingRepositories: [String] = []
+    /// ⌘P 最近仓库列表弹窗。
+    var showingRecent = false
     @ObservationIgnored var repositoryCheckTask: Task<Void, Never>?
     /// 避免重复写入相同状态。
     @ObservationIgnored private var stateData: Data?
@@ -94,6 +96,10 @@ final class Workspace {
             selected?.deactivate()
             if let previous = library.selectedPath {
                 scheduleIdleUnload(previous)
+            }
+            // 仅切换时计入使用：启动恢复 / 重复点击当前标签不计。
+            if let index = library.repositories.firstIndex(where: { $0.path == path }) {
+                library.repositories[index].recordUse(at: Date().timeIntervalSince1970)
             }
         }
         idleUnloads.removeValue(forKey: path)?.cancel()
