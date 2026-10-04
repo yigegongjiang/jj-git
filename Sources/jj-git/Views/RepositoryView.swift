@@ -167,17 +167,18 @@ struct RepositorySidebar: View {
                     ForEach(session.worktrees.filter { !$0.bare }) { tree in
                         let current = tree.path == session.location.root
                         Button { Task { await workspace.open(tree.path) } } label: {
-                            VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 5) {
                                 Label(
                                     URL(fileURLWithPath: tree.path).lastPathComponent,
                                     systemImage: current ? "checkmark" : "folder.badge.gearshape"
                                 )
-                                .lineLimit(1).fontWeight(current ? .semibold : .regular)
+                                .lineLimit(1).fontWeight(current ? .semibold : .regular).layoutPriority(1)
+                                Spacer(minLength: 4)
                                 Text(tree.branch.isEmpty ? String(tree.head.prefix(8))
                                     : tree.branch.replacingOccurrences(of: "refs/heads/", with: ""))
-                                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                                    .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                             }
-                            .padding(.vertical, 2).frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }.buttonStyle(.plain).help(tree.path).disabled(tree.prunable)
                     }
