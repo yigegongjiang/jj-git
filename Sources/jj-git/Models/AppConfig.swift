@@ -46,6 +46,11 @@ struct AppConfig: Codable, Equatable, Sendable {
         var pollSeconds = 5
     }
 
+    struct Tabs: Codable, Equatable, Sendable {
+        /// 未激活标签的 session 保留时间；超时保留标签位置，点击重新加载。
+        var idleUnloadSeconds = 180
+    }
+
     struct Appearance: Codable, Equatable, Sendable {
         /// 字体族名称（如 "FiraCode Nerd Font Mono"）；为空或未安装时使用系统字体。
         var fontFamily = ""
@@ -73,6 +78,7 @@ struct AppConfig: Codable, Equatable, Sendable {
     var history = History()
     var diff = Diff()
     var refresh = Refresh()
+    var tabs = Tabs()
     var commandLog = CommandLog()
 
     func normalized() -> AppConfig {
@@ -97,6 +103,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.diff.contextLines = diff.contextLines.clamped(1...20)
         value.diff.previewTimeoutMilliseconds = diff.previewTimeoutMilliseconds.clamped(100...30000)
         value.refresh.pollSeconds = refresh.pollSeconds.clamped(1...600)
+        value.tabs.idleUnloadSeconds = tabs.idleUnloadSeconds.clamped(1...86400)
         value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)
         return value
     }

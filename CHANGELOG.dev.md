@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.16] - 2026-10-04
+
+### Added
+
+- 未激活标签默认 3 分钟后释放内存，保留位置，点击重新加载；等待进行中的 Git 操作完成；保留时间可配置，提交信息草稿随释放清除
+  - `tabs.idleUnloadSeconds` 默认 180，范围 1–86400 秒；切回取消释放；释放取消读取任务并移除 session；关闭当前标签时重建相邻已释放标签
+
 ## [0.4.15] - 2026-10-04
 
 ### Fixed

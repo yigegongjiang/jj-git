@@ -103,6 +103,19 @@ final class RepositorySession: Identifiable {
         refreshing = false
     }
 
+    func waitForOperation() async {
+        await operationTask?.value
+    }
+
+    /// 关闭 / 闲置释放前取消读取任务，避免任务继续持有 session。
+    func dispose() {
+        deactivate()
+        detailTask?.cancel()
+        detailTask = nil
+        diffTask?.cancel()
+        diffTask = nil
+    }
+
     func refresh(forceHistory: Bool = false) {
         if forceHistory {
             referenceKey = ""

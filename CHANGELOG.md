@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.16] - 2026-10-04
+
+### Added
+
+- 未激活标签默认 3 分钟后释放内存，保留位置，点击重新加载；等待进行中的 Git 操作完成；保留时间可配置，提交信息草稿随释放清除
+
 ## [0.4.15] - 2026-10-04
 
 ### Fixed

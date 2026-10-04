@@ -16,9 +16,30 @@ final class Workspace {
     @ObservationIgnored private var stateData: Data?
     @ObservationIgnored private var stateValid = true
     @ObservationIgnored private var scanTask: Task<Void, Never>?
+    @ObservationIgnored private var idleUnloads: [String: Task<Void, Never>] = [:]
 
     var selected: RepositorySession? {
         library.selectedPath.flatMap { sessions[$0] }
+    }
+
+    deinit {
+        for task in idleUnloads.values {
+            task.cancel()
+        }
+    }
+
+    private func scheduleIdleUnload(_ path: String) {
+        idleUnloads[path]?.cancel()
+        let seconds = config.tabs.idleUnloadSeconds
+        idleUnloads[path] = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(seconds)) } catch { return }
+            // 写操作不中断；完成后的刷新随 session 一起取消。
+            await self?.sessions[path]?.waitForOperation()
+            guard !Task.isCancelled, let self, library.selectedPath != path else { return }
+            sessions[path]?.dispose()
+            sessions.removeValue(forKey: path)
+            idleUnloads.removeValue(forKey: path)
+        }
     }
 
     init() {
@@ -55,6 +76,8 @@ final class Workspace {
             }
             if shouldSelect {
                 select(location.root)
+            } else if library.selectedPath != location.root {
+                scheduleIdleUnload(location.root)
             }
             missingRepositories.removeAll { $0 == path || $0 == location.root }
             save()
@@ -68,7 +91,11 @@ final class Workspace {
         }
         if library.selectedPath != path {
             selected?.deactivate()
+            if let previous = library.selectedPath {
+                scheduleIdleUnload(previous)
+            }
         }
+        idleUnloads.removeValue(forKey: path)?.cancel()
         library.selectedPath = path
         selected?.activate()
         save()
@@ -76,13 +103,16 @@ final class Workspace {
 
     func close(_ path: String) {
         guard sessions[path]?.operation == nil else { return }
-        sessions[path]?.deactivate()
+        idleUnloads.removeValue(forKey: path)?.cancel()
+        sessions[path]?.dispose()
         sessions.removeValue(forKey: path)
         let index = library.tabs.firstIndex(of: path) ?? 0
         library.tabs.removeAll { $0 == path }
         if library.selectedPath == path {
-            library.selectedPath = library.tabs.isEmpty ? nil : library.tabs[min(index, library.tabs.count - 1)]
-            selected?.activate()
+            library.selectedPath = nil
+            if !library.tabs.isEmpty {
+                select(library.tabs[min(index, library.tabs.count - 1)])
+            }
         }
         save()
     }
