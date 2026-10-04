@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.15] - 2026-10-04
+
+### Fixed
+
+- 本地变更默认展示未暂存全部差异；点击已暂存 / 未暂存标题或列表空白切换分区
+  - `DiffTarget.changes` 按分区预处理；`selectChanges` 重试全量预览，原生列表空白识别与文件行隔离，预处理期间文件选择保留批次
+
 ## [0.4.14] - 2026-10-04
 
 ### Added

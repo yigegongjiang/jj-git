@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.15] - 2026-10-04
+
+### Fixed
+
+- 本地变更默认展示未暂存全部差异；点击已暂存 / 未暂存标题或列表空白切换分区
+
 ## [0.4.14] - 2026-10-04
 
 ### Added
