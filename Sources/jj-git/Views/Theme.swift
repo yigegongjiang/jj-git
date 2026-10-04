@@ -17,6 +17,18 @@ enum Theme {
     /// 不在 HEAD 历史中的提交。
     static let notMergedOpacity = 0.4
     static let nsBorder = NSColor(srgbRed: 0x44 / 255, green: 0x47 / 255, blue: 0x5A / 255, alpha: 1)
+    /// AppKit 绘制用的普通 sRGB 颜色；由 SwiftUI Color 桥接的颜色每次绘制都要额外做色彩空间检查。
+    static let nsTitleBar = NSColor(hex: 0x44475A)
+    static let nsForeground = NSColor(hex: 0xF8F8F2)
+    static let nsAdded = NSColor(hex: 0xBD93F9)
+    static let nsDeleted = NSColor(hex: 0xFF5555)
+}
+
+private extension NSColor {
+    convenience init(hex: Int) {
+        self.init(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
 }
 
 private extension Color {
