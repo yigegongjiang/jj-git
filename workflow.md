@@ -13,9 +13,10 @@
 
 # 调试
 
+`<TEAM>` = `CLAUDE.local.md#签名` 的 `DEVELOPMENT_TEAM`; 缺失 → 脚本报错退出, MUST NOT 改回 ad-hoc 签名。
+
 ```bash
-xcodebuild -project jj-git.xcodeproj -scheme jj-git -configuration Debug -derivedDataPath build build
-open "build/Build/Products/Debug/jj-git Debug.app"            # 启动 Debug 版
+./scripts/debug.sh <TEAM>                                    # 构建 Debug + 退出旧进程 + 启动
 ```
 
 验证 → 构建 + 启动；按需用 `osascript` 操作界面验证功能、核对结果；界面变更截图检查。
@@ -26,9 +27,9 @@ open "build/Build/Products/Debug/jj-git Debug.app"            # 启动 Debug 版
 
 ## TL;DR
 
-1. 验证: `swiftformat --lint` + `swiftlint` + [调试验证](#调试)
+1. 验证: `swiftformat --lint` + `swiftlint`
 2. 写版本: `version.xcconfig` + `CHANGELOG.md` + `CHANGELOG.dev.md` 同步编辑 (与 tag 一致)
-3. 预部署: `./scripts/install-local.sh`
+3. 预部署: `./scripts/install-local.sh <TEAM>`
 4. 发布: commit + annotated tag (`-a -m`) + push branch + tag (有 remote 时)
 
 ## 1. 验证
@@ -36,7 +37,6 @@ open "build/Build/Products/Debug/jj-git Debug.app"            # 启动 Debug 版
 ```bash
 swiftformat --lint Sources
 swiftlint --strict
-xcodebuild -project jj-git.xcodeproj -scheme jj-git -configuration Debug -derivedDataPath build build
 ```
 
 ## 2. 写版本
@@ -47,7 +47,7 @@ xcodebuild -project jj-git.xcodeproj -scheme jj-git -configuration Debug -derive
 
 ## 3. 预部署
 
-信赖并执行 `./scripts/install-local.sh` 脚本（能力完全交由它封装、提供、执行）
+信赖并执行 `./scripts/install-local.sh <TEAM>` 脚本 (`<TEAM>` 同 [调试](#调试))（能力完全交由它封装、提供、执行）
 
 ## 4. 发布
 

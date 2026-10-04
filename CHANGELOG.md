@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.4] - 2026-10-04
+
+### Fixed
+
+- 「文稿」访问权限不再在每次升级后重新询问 (允许一次即可)
+
 ## [0.2.3] - 2026-10-04
 
 ### Added

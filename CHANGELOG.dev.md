@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.4] - 2026-10-04
+
+### Fixed
+
+- 「文稿」访问权限不再在每次升级后重新询问 (允许一次即可)
+  - ad-hoc → Apple Development 签名 (TCC DR 按证书而非 CDHash); `scripts/install-local.sh` / 新增 `scripts/debug.sh` 必填参数 `<DEVELOPMENT_TEAM>`
+
 ## [0.2.3] - 2026-10-04
 
 ### Added

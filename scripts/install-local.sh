@@ -1,13 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
+# 用固定 Team 签名: TCC 按证书识别 App, 升级后「文稿」等授权不失效。
+if [[ $# -ne 1 || -z "$1" ]]; then
+  echo "用法: $0 <DEVELOPMENT_TEAM>" >&2
+  exit 64
+fi
+team="$1"
+
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 built_app="$project_dir/build/Build/Products/Release/jj-git.app"
 installed_app="/Applications/jj-git.app"
 
 cd "$project_dir"
 xcodebuild -project jj-git.xcodeproj -scheme jj-git \
-  -configuration Release -derivedDataPath build -destination 'platform=macOS' build
+  -configuration Release -derivedDataPath build -destination 'platform=macOS' \
+  CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM="$team" \
+  build
 
 # 构建 / 产物检查失败时保留旧版。
 test -x "$built_app/Contents/MacOS/jj-git"
