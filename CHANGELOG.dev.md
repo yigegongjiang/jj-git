@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.18] - 2026-10-04
+
+### Added
+
+- 新增可搜索的快捷键查看面板：顶部键盘按钮 / Help 菜单 / `⇧⌘/` 打开
+  - `KeyboardShortcutsView` 静态目录 + `Workspace.showingKeyboardShortcuts` 驱动 `ContentView` sheet；`CommandGroup(replacing: .help)`
+
 ## [0.4.17] - 2026-10-04
 
 ### Added

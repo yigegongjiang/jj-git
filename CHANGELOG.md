@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.18] - 2026-10-04
+
+### Added
+
+- 新增可搜索的快捷键查看面板：顶部键盘按钮 / Help 菜单 / `⇧⌘/` 打开
+
 ## [0.4.17] - 2026-10-04
 
 ### Added
