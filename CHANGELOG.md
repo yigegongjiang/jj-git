@@ -11,6 +11,14 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.2] - 2026-10-04
+
+### Fixed
+
+- 大文件差异打开更快 (20 万行 11 MB 差异约 1.5 秒 → 0.3 秒), 超长单行不再拖慢界面
+- 文件内容未变时轮询刷新不再重新解析差异
+- 修改过的符号链接也禁止按行暂存; 内容含 `Subproject commit` 的普通文件不再被误判为子模块
+
 ## [0.3.1] - 2026-10-04
 
 ### Changed

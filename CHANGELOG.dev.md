@@ -7,6 +7,18 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.2] - 2026-10-04
+
+### Fixed
+
+- 大文件差异打开更快 (20 万行 11 MB 差异约 1.5 秒 → 0.3 秒), 超长单行不再拖慢界面
+  - `TextDiff.init` 去掉对整个 raw 的子串搜索 (占 ~400 ms); 解析 569 → 166 ms
+  - `DiffLine.display` / `columns` 只处理前 1000 字符, 渲染耗时与行长无关
+- 文件内容未变时轮询刷新不再重新解析差异
+  - `RepositoryQuery.diff(reusing:)` 按字节比较原文, 相同则复用上次 `TextDiff`
+- 修改过的符号链接也禁止按行暂存; 内容含 `Subproject commit` 的普通文件不再被误判为子模块
+  - 符号链接看头部 `mode 120000` / `index … 120000`; 子模块 = 单块且全部行以 `Subproject commit ` 开头
+
 ## [0.3.1] - 2026-10-04
 
 ### Changed
