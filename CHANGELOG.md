@@ -11,6 +11,18 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.0] - 2026-10-04
+
+### Added
+
+- 全部配置存放在 `~/.config/jj-git/`: `config.json` (设置) + `state.json` (仓库 / 分组 / 标签), 外部修改即时生效
+- ⌘, 打开配置文件; `config.default.json` 列出全部可配置项及默认值
+- 可配置: 编辑器 / 终端顺序 / Git 路径与超时 / Pull 方式 / 历史条数 / 差异上下文行数 / 刷新间隔
+
+### Changed
+
+- 首次启动自动导入旧版仓库列表; 配置文件写错时保留原文件并提示, 沿用上次有效内容
+
 ## [0.2.7] - 2026-10-04
 
 ### Fixed

@@ -7,6 +7,22 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.0] - 2026-10-04
+
+### Added
+
+- 全部配置存放在 `~/.config/jj-git/`: `config.json` (设置) + `state.json` (仓库 / 分组 / 标签), 外部修改即时生效
+  - `ConfigStore`: 目录 (Debug -> `jj-git-debug`) / 原子写 / 以默认值为底合并解码; `RepositoryMonitor(paths:)` 监听目录, 比对字节忽略自写
+- ⌘, 打开配置文件; `config.default.json` 列出全部可配置项及默认值
+  - `CommandGroup(replacing: .appSettings)` -> `Workspace.openConfig()`
+- 可配置: 编辑器 / 终端顺序 / Git 路径与超时 / Pull 方式 / 历史条数 / 差异上下文行数 / 刷新间隔
+  - `AppConfig` + `normalized()` 越界收敛; `AppConfig.current` 锁保护快照供 `GitProcess` 后台读取
+
+### Changed
+
+- 首次启动自动导入旧版仓库列表; 配置文件写错时保留原文件并提示, 沿用上次有效内容
+  - `UserDefaults` `repository-library` 仅在 `state.json` 缺失时导入, 原键保留; 解析失败 `stateValid=false` 停写
+
 ## [0.2.7] - 2026-10-04
 
 ### Fixed
