@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.13] - 2026-10-04
+
+### Changed
+
+- 安装完成后自动打开应用并保持运行
+
 ## [0.4.12] - 2026-10-04
 
 ### Changed

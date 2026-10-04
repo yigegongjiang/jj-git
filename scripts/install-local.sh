@@ -34,7 +34,7 @@ rm -rf -- "$installed_app"
 ditto "$built_app" "$installed_app"
 codesign --verify --strict "$installed_app"
 trap quit_app EXIT
-open -g "$installed_app"
+open "$installed_app"
 osascript <<'APPLESCRIPT'
 repeat 50 times
     if application id "com.yigegongjiang.jj-git" is running then
@@ -45,6 +45,5 @@ repeat 50 times
 end repeat
 error "jj-git did not start."
 APPLESCRIPT
-quit_app
 trap - EXIT
-printf '已安装并验证启动，App 已退出: %s\n' "$installed_app"
+printf '已安装并打开: %s\n' "$installed_app"

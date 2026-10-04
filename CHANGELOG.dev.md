@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.13] - 2026-10-04
+
+### Changed
+
+- 安装完成后自动打开应用并保持运行
+  - `scripts/install-local.sh` 前台启动，验证成功后取消退出清理；启动失败仍退出应用
+
 ## [0.4.12] - 2026-10-04
 
 ### Changed
