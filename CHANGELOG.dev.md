@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.9] - 2026-10-04
+
+### Added
+
+- 全文件差异预处理超时可在配置中调整, 默认 1 秒, 修改即时生效
+  - `diff.previewTimeoutMilliseconds` 默认 1000, 范围 100–30000 ms; 两类差异共用, 下一次预处理读取新值
+
 ## [0.4.8] - 2026-10-04
 
 ### Added

@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.9] - 2026-10-04
+
+### Added
+
+- 全文件差异预处理超时可在配置中调整, 默认 1 秒, 修改即时生效
+
 ## [0.4.8] - 2026-10-04
 
 ### Added

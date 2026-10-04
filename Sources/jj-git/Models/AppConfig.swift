@@ -37,6 +37,8 @@ struct AppConfig: Codable, Equatable, Sendable {
     struct Diff: Codable, Equatable, Sendable {
         /// 下限 1：按行暂存生成的补丁依赖上下文定位。
         var contextLines = 3
+        /// 全文件差异读取与预处理的总预算（ms）。
+        var previewTimeoutMilliseconds = 1000
     }
 
     struct Refresh: Codable, Equatable, Sendable {
@@ -93,6 +95,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.history.initialCount = history.initialCount.clamped(50...100_000)
         value.history.pageSize = history.pageSize.clamped(50...100_000)
         value.diff.contextLines = diff.contextLines.clamped(1...20)
+        value.diff.previewTimeoutMilliseconds = diff.previewTimeoutMilliseconds.clamped(100...30000)
         value.refresh.pollSeconds = refresh.pollSeconds.clamped(1...600)
         value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)
         return value

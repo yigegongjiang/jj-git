@@ -115,7 +115,8 @@ struct RepositoryQuery: Sendable {
     func allDiffs(
         _ targets: [DiffTarget], commit: GitCommit?, reusing previous: [FileDiff]
     ) async throws -> [FileDiff]? {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+        let timeout = AppConfig.current.diff.previewTimeoutMilliseconds
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(timeout))
         return try await withThrowingTaskGroup(of: [FileDiff]?.self) { group in
             group.addTask {
                 var result: [FileDiff] = []
