@@ -17,7 +17,7 @@ final class RepositorySession: Identifiable {
     var graph: [CommitGraphRow] = []
     /// 提交图列宽（轨道数），超过上限的轨道被裁剪，保证提交标题对齐。
     var graphLanes = 1
-    var historyLimit = 2000
+    var historyLimit = AppConfig.current.history.initialCount
     var hasMoreHistory = false
     var selectedCommit: GitCommit?
     var commitDetail: CommitDetail?
@@ -72,7 +72,7 @@ final class RepositorySession: Identifiable {
         // FSEvents 负责实时刷新；轮询只兜底漏报，且仅在 App 位于前台时执行。
         polling = Task { [weak self] in
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                do { try await Task.sleep(for: .seconds(AppConfig.current.refresh.pollSeconds)) } catch { return }
                 if NSApplication.shared.isActive {
                     self?.refresh()
                 }

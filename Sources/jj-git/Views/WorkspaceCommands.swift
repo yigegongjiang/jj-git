@@ -4,6 +4,9 @@ struct WorkspaceCommands: Commands {
     let workspace: Workspace
 
     var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("打开配置文件") { workspace.openConfig() }.keyboardShortcut(",")
+        }
         CommandGroup(replacing: .newItem) {
             Button("打开仓库…") { workspace.chooseRepository() }.keyboardShortcut("o")
             Button("扫描目录…") { workspace.chooseRepository(scan: true) }.keyboardShortcut(
@@ -27,9 +30,11 @@ struct WorkspaceCommands: Commands {
             Divider()
             Button("Fetch") { workspace.selected?.fetch() }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
-            Button("Pull（Rebase）") { workspace.selected?.perform(.pull, title: "Pull") }
-                .keyboardShortcut("p", modifiers: [.command, .shift])
-                .disabled(workspace.selected?.status.upstream.isEmpty != false)
+            Button(workspace.config.pull.rebase ? "Pull（Rebase）" : "Pull") {
+                workspace.selected?.perform(.pull, title: "Pull")
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(workspace.selected?.status.upstream.isEmpty != false)
             Button("Push 到上游") { workspace.selected?.pushToUpstream() }
                 .keyboardShortcut("u", modifiers: [.command, .shift])
                 .disabled(workspace.selected?.status.detached != false || workspace.selected?.remotes.isEmpty != false)

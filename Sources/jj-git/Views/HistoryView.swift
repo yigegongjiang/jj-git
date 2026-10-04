@@ -11,7 +11,7 @@ struct HistoryView: View {
                 SectionHeading(title: "提交历史 · \(session.graph.count)") {
                     if session.hasMoreHistory {
                         Button("加载更多") {
-                            session.historyLimit += 500
+                            session.historyLimit += AppConfig.current.history.pageSize
                             session.refresh(forceHistory: true)
                         }.buttonStyle(.borderless).font(.caption).disabled(session.refreshing)
                     }

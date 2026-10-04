@@ -24,7 +24,6 @@ struct RepositoryLibrary: Codable, Sendable {
     var groups: [RepositoryGroup] = []
     var tabs: [String] = []
     var selectedPath: String?
-    var editorPath: String?
     var sidebarHidden: Bool?
 }
 

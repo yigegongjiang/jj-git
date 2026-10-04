@@ -107,7 +107,7 @@ actor RepositoryCommand {
             throw GitFailure(message: "仓库正在进行 \(operation)，请在终端完成或中止后再提交。")
         }
         return try await run(["commit"] + (amend ? ["--amend"] : []) + ["--file=-"],
-                             input: Data(message.utf8), timeout: 120)
+                             input: Data(message.utf8), timeout: Self.commitTimeout)
     }
 
     private func manage(_ action: RepositoryAction) async throws -> String {
@@ -150,7 +150,8 @@ actor RepositoryCommand {
             return try await run(["tag", "-d", "--", name])
         case let .pushTag(name, remote):
             try validateName(remote)
-            return try await run(["push", "--", remote, "refs/tags/\(name):refs/tags/\(name)"], timeout: 180)
+            return try await run(["push", "--", remote, "refs/tags/\(name):refs/tags/\(name)"],
+                                 timeout: Self.networkTimeout)
         case let .addRemote(name, url):
             try validateRemote(name, url: url)
             return try await run(["remote", "add", "--", name, url])
@@ -158,10 +159,11 @@ actor RepositoryCommand {
             return try await editRemote(name, url: url, newName: newName ?? name)
         case let .fetch(remote):
             try validateName(remote)
-            return try await run(["fetch", "--", remote], timeout: 180)
+            return try await run(["fetch", "--", remote], timeout: Self.networkTimeout)
         case .pull:
-            // 与日常习惯一致：rebase 到上游，本地未提交变更自动贮藏并恢复。
-            return try await run(["pull", "--rebase", "--autostash"], timeout: 180)
+            let pull = AppConfig.current.pull
+            return try await run(["pull", pull.rebase ? "--rebase" : "--no-rebase"]
+                + (pull.autostash ? ["--autostash"] : []), timeout: Self.networkTimeout)
         case let .push(remote, branch, lease):
             return try await push(remote: remote, branch: branch, lease: lease)
         default:
@@ -186,7 +188,7 @@ actor RepositoryCommand {
         try validateName(remote)
         let result = try await GitProcess.run(at: query.location.root,
                                               ["ls-remote", "--exit-code", "--refs", "--", remote, reference],
-                                              accepted: [0, 2], timeout: 180)
+                                              accepted: [0, 2], timeout: Self.networkTimeout)
         if result.status == 2 {
             if reference.hasPrefix("refs/heads/") {
                 return try await run(["branch", "-dr", "--", remote + "/" + reference.dropFirst(11)])
@@ -196,7 +198,7 @@ actor RepositoryCommand {
         let remoteHash = String(result.text.prefix(while: { $0 != "\t" }))
         let lease = expected ?? remoteHash
         return try await run(["push", "--force-with-lease=\(reference):\(lease)", "--", remote, ":" + reference],
-                             timeout: 180)
+                             timeout: Self.networkTimeout)
     }
 
     private func push(remote: String, branch: String, lease: String?) async throws -> String {
@@ -209,7 +211,7 @@ actor RepositoryCommand {
             }
             arguments.append("--force-with-lease=refs/heads/\(branch):\(lease)")
         }
-        return try await run(arguments + ["--", remote, "HEAD:refs/heads/\(branch)"], timeout: 180)
+        return try await run(arguments + ["--", remote, "HEAD:refs/heads/\(branch)"], timeout: Self.networkTimeout)
     }
 
     private func paths(_ files: [FileChange]) throws -> [String] {
@@ -263,7 +265,15 @@ actor RepositoryCommand {
         return "已加入 .gitignore"
     }
 
-    private func run(_ arguments: [String], input: Data? = nil, timeout: TimeInterval = 30) async throws -> String {
+    private static var commitTimeout: TimeInterval {
+        TimeInterval(AppConfig.current.git.commitTimeoutSeconds)
+    }
+
+    private static var networkTimeout: TimeInterval {
+        TimeInterval(AppConfig.current.git.networkTimeoutSeconds)
+    }
+
+    private func run(_ arguments: [String], input: Data? = nil, timeout: TimeInterval? = nil) async throws -> String {
         let output = try await GitProcess.run(at: query.location.root, arguments, input: input, timeout: timeout)
         return [output.text, output.error].filter { !$0.isEmpty }.joined(separator: "\n")
     }

@@ -6,6 +6,11 @@ struct RepositoryView: View {
     @State private var dialog: RepositoryDialog?
     @State private var showOperationOutput = false
 
+    private var pullHelp: String {
+        let pull = workspace.config.pull
+        return (pull.rebase ? "Rebase 到上游" : "Merge 上游") + (pull.autostash ? "，本地变更自动贮藏后恢复" : "") + " ⇧⌘P"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             toolbar
@@ -51,7 +56,7 @@ struct RepositoryView: View {
             .disabled(session.remotes.isEmpty || session.operation != nil)
             Button { session.perform(.pull, title: "Pull") } label: { Label("Pull", systemImage: "arrow.down") }
                 .disabled(session.status.upstream.isEmpty || session.operation != nil)
-                .help("Rebase 到上游，本地变更自动贮藏后恢复 ⇧⌘P")
+                .help(pullHelp)
             Menu {
                 Button("Push…") { dialog = .push(force: false) }
                 Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }

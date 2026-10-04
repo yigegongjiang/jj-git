@@ -29,8 +29,9 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 本地变更 ⌘2: 双击 / 回车 / 空格暂存·取消; 标题按钮暂存选中 / 全部; 按块 / 按行 (⇧点击连选) 暂存·取消·放弃; 加入 `.gitignore`
 - 提交: ⌘↩ 提交 / ⌘⌥↩ 提交并推送; Amend (推送时 force-with-lease)
 - 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送
-- 同步: Fetch ⇧⌘F / Pull (rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
-- 工具: 终端 ⇧⌘T (iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
+- 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
+- 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
+- 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改即时生效
 - 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
 
 ## 架构
@@ -38,10 +39,14 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS 14+; 无第三方依赖
 - 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / 签名 (默认 ad-hoc, 传 Team 用 Apple Development)
 - Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
-- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时 5 秒兜底轮询; 回到前台刷新
+- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
-- 持久化: `UserDefaults` 保存仓库列表 / 分组 / 标签页 / 外部编辑器
+- 持久化: `~/.config/jj-git/` (Debug: `jj-git-debug/`) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
+  - `config.json`: 设置 (编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
+  - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏; 外部修改同步开关标签
+  - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅
+  - 首次启动从旧版 `UserDefaults` 导入 (原数据保留)
 
 ## 结构
 

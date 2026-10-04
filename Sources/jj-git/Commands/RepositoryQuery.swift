@@ -114,8 +114,10 @@ struct RepositoryQuery: Sendable {
         return nil
     }
 
-    private static let diffOptions = ["--no-color", "--no-ext-diff", "--no-textconv", "--no-renames",
-                                      "--src-prefix=a/", "--dst-prefix=b/", "--unified=3"]
+    private static var diffOptions: [String] {
+        ["--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", "--src-prefix=a/", "--dst-prefix=b/",
+         "--unified=\(AppConfig.current.diff.contextLines)"]
+    }
 
     private func run(_ arguments: [String]) async throws -> GitOutput {
         try await GitProcess.run(at: location.root, arguments)

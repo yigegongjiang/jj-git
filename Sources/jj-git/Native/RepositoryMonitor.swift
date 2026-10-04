@@ -6,11 +6,15 @@ final class RepositoryMonitor: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let contextBox: MonitorCallback
 
-    init(location: RepositoryLocation, callback: @escaping @Sendable () -> Void) {
+    convenience init(location: RepositoryLocation, callback: @escaping @Sendable () -> Void) {
+        let paths = Set([location.root, location.gitDirectory, location.commonDirectory])
+        self.init(paths: Array(paths), callback: callback)
+    }
+
+    init(paths: [String], callback: @escaping @Sendable () -> Void) {
         contextBox = MonitorCallback(callback)
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(contextBox).toOpaque(),
                                            retain: nil, release: nil, copyDescription: nil)
-        let paths = Array(Set([location.root, location.gitDirectory, location.commonDirectory]))
         stream = FSEventStreamCreate(
             nil, { _, info, _, _, _, _ in
                 guard let info else { return }

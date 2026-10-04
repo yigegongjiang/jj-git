@@ -27,14 +27,20 @@ struct GitOutput: Sendable {
 
 /// 每次调用独立进程；不经过 shell，取消与超时会终止整个进程组。
 enum GitProcess {
-    static let executable = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
+    private static let detected = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
         .first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/git"
 
     static func run(
         at directory: String, _ arguments: [String], input: Data? = nil,
-        accepted: Set<Int32> = [0], timeout: TimeInterval = 30
+        accepted: Set<Int32> = [0], timeout: TimeInterval? = nil
     ) async throws -> GitOutput {
-        let execution = GitExecution()
+        let config = AppConfig.current.git
+        let executable = config.executable.isEmpty ? detected : config.executable
+        guard FileManager.default.isExecutableFile(atPath: executable) else {
+            throw GitFailure(message: "config.json git.executable 不可执行：\(executable)")
+        }
+        let timeout = timeout ?? TimeInterval(config.timeoutSeconds)
+        let execution = GitExecution(executable: executable, outputLimit: config.outputLimitMiB * 1024 * 1024)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
@@ -60,10 +66,17 @@ enum GitProcess {
 }
 
 private final class GitExecution: @unchecked Sendable {
+    private let executable: String
+    private let outputLimit: Int
     private let lock = NSLock()
     private var process: Process?
     private var cancelled = false
     private var failure: GitFailure?
+
+    init(executable: String, outputLimit: Int) {
+        self.executable = executable
+        self.outputLimit = outputLimit
+    }
 
     func cancel(failure reason: GitFailure? = nil) {
         lock.lock()
@@ -114,7 +127,7 @@ private final class GitExecution: @unchecked Sendable {
 
     private func makeCommand(at directory: String, arguments: [String]) -> Process {
         let command = Process()
-        command.executableURL = URL(fileURLWithPath: GitProcess.executable)
+        command.executableURL = URL(fileURLWithPath: executable)
         command.currentDirectoryURL = URL(fileURLWithPath: directory)
         command.arguments = ["--no-pager", "--literal-pathspecs", "-c", "color.ui=false",
                              "-c", "core.quotepath=false"] + arguments
@@ -153,15 +166,16 @@ private final class GitExecution: @unchecked Sendable {
         let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
         let deadline = DispatchTime.now() + timeout
         timer.schedule(deadline: .now() + 0.25, repeating: 0.25)
+        let limit = outputLimit
         timer.setEventHandler { [weak self] in
             if DispatchTime.now() >= deadline {
                 self?.cancel(failure: GitFailure(message: "Git 操作超时（\(Int(timeout)) 秒）。请检查网络或 Git hooks。",
                                                  timedOut: true))
             } else if outputs.contains(where: { url in
                 let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize
-                return (size ?? 0) > 16 * 1024 * 1024
+                return (size ?? 0) > limit
             }) {
-                self?.cancel(failure: GitFailure(message: "Git 输出超过 16 MiB，请缩小所选文件或历史范围。"))
+                self?.cancel(failure: GitFailure(message: "Git 输出超过 \(limit / 1024 / 1024) MiB，请缩小所选文件或历史范围。"))
             }
         }
         timer.resume()
@@ -183,9 +197,10 @@ private final class GitExecution: @unchecked Sendable {
     private func readBounded(_ url: URL) throws -> Data {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
-        let limit = 16 * 1024 * 1024
-        let data = try handle.read(upToCount: limit + 1) ?? Data()
-        guard data.count <= limit else { throw GitFailure(message: "Git 输出超过 16 MiB，请缩小所选文件或历史范围。") }
+        let data = try handle.read(upToCount: outputLimit + 1) ?? Data()
+        guard data.count <= outputLimit else {
+            throw GitFailure(message: "Git 输出超过 \(outputLimit / 1024 / 1024) MiB，请缩小所选文件或历史范围。")
+        }
         return data
     }
 }

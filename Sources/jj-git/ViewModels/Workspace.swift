@@ -5,12 +5,19 @@ import Observation
 @MainActor @Observable
 final class Workspace {
     var library: RepositoryLibrary
+    var config: AppConfig
     var sessions: [String: RepositorySession] = [:]
     var opening: Set<String> = []
     var scanning = false
     var scanProgress = ""
     var error: String?
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private var configMonitor: RepositoryMonitor?
+    /// 最近一次读写的文件内容，用于忽略自身写入触发的监听事件。
+    @ObservationIgnored private var configData: Data?
+    @ObservationIgnored private var stateData: Data?
+    @ObservationIgnored private var configValid = true
+    @ObservationIgnored private var stateValid = true
+    @ObservationIgnored private var fileErrors: [String: String] = [:]
     @ObservationIgnored private var scanTask: Task<Void, Never>?
 
     var selected: RepositorySession? {
@@ -18,17 +25,29 @@ final class Workspace {
     }
 
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        if let data = defaults.data(forKey: "repository-library") {
-            do {
-                library = try JSONDecoder().decode(RepositoryLibrary.self, from: data)
-            } catch {
-                library = RepositoryLibrary()
-                defaults.set(data, forKey: "repository-library-unreadable")
-                self.error = "仓库列表无法读取，原始配置已保留。\n\(error.localizedDescription)"
+        library = RepositoryLibrary()
+        config = AppConfig()
+        do {
+            try FileManager.default.createDirectory(at: ConfigStore.directory, withIntermediateDirectories: true)
+            let defaultConfig = try ConfigStore.encode(AppConfig())
+            if (try? ConfigStore.read(ConfigStore.defaultsURL)) != defaultConfig {
+                try ConfigStore.write(defaultConfig, to: ConfigStore.defaultsURL)
             }
-        } else {
-            library = RepositoryLibrary()
+            do { try migrate(defaults) } catch {
+                stateValid = false // 不写空 state.json，下次启动重试导入。
+                throw error
+            }
+            if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
+                try ConfigStore.write(defaultConfig, to: ConfigStore.configURL)
+            }
+        } catch { self.error = "\(ConfigStore.directory.path)\n\(error.localizedDescription)" }
+        reloadConfig()
+        reloadState(restoring: false)
+        configMonitor = RepositoryMonitor(paths: [ConfigStore.directory.path]) { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.reloadConfig()
+                self?.reloadState(restoring: true)
+            }
         }
     }
 
@@ -203,9 +222,8 @@ final class Workspace {
         }
     }
 
-    /// 优先 iTerm，未安装时使用系统终端。
     func openTerminal(_ path: String) {
-        let application = ["com.googlecode.iterm2", "com.apple.Terminal"].lazy
+        let application = config.terminal.bundleIDs.lazy
             .compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
         guard let application else {
             error = "找不到终端 App"
@@ -215,9 +233,9 @@ final class Workspace {
     }
 
     func openEditor(_ path: String) {
-        if let editorPath = library.editorPath, FileManager.default.fileExists(atPath: editorPath) {
-            launch(path, with: URL(fileURLWithPath: editorPath))
-        } else if let application = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
+        if !config.editor.path.isEmpty, FileManager.default.fileExists(atPath: config.editor.path) {
+            launch(path, with: URL(fileURLWithPath: config.editor.path))
+        } else if let application = NSWorkspace.shared.urlForApplication(withBundleIdentifier: config.editor.bundleID) {
             launch(path, with: application)
         } else {
             chooseEditor(open: path)
@@ -232,10 +250,13 @@ final class Workspace {
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             Task { @MainActor [weak self] in
-                self?.library.editorPath = url.path
-                self?.save()
+                guard let self else { return }
+                if configValid {
+                    config.editor.path = url.path
+                    saveConfig()
+                }
                 if let path {
-                    self?.launch(path, with: url)
+                    launch(path, with: url)
                 }
             }
         }
@@ -249,11 +270,128 @@ final class Workspace {
             }
         }
     }
+}
+
+// MARK: - ~/.config/jj-git 文件
+
+extension Workspace {
+    /// 用编辑器打开 config.json；文件被删除时先按当前配置重建。
+    func openConfig() {
+        if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
+            saveConfig()
+        }
+        openEditor(ConfigStore.configURL.path)
+    }
+
+    private func saveConfig() {
+        do {
+            let data = try ConfigStore.encode(config)
+            try ConfigStore.write(data, to: ConfigStore.configURL)
+            configData = data
+            AppConfig.current = config
+        } catch { self.error = error.localizedDescription }
+    }
 
     private func save() {
+        guard stateValid else { return }
         do {
-            let data = try JSONEncoder().encode(library)
-            defaults.set(data, forKey: "repository-library")
+            let data = try ConfigStore.encode(library)
+            guard data != stateData else { return }
+            try ConfigStore.write(data, to: ConfigStore.stateURL)
+            stateData = data
         } catch { self.error = error.localizedDescription }
+    }
+
+    /// 旧版本存于 UserDefaults；仅在 state.json 不存在时导入一次，原数据保留不删。
+    private func migrate(_ defaults: UserDefaults) throws {
+        guard !FileManager.default.fileExists(atPath: ConfigStore.stateURL.path),
+              let data = defaults.data(forKey: "repository-library") else { return }
+        let legacy = try ConfigStore.decode(data, defaults: RepositoryLibrary())
+        try ConfigStore.write(ConfigStore.encode(legacy), to: ConfigStore.stateURL)
+        if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let editorPath = object["editorPath"] as? String {
+            var value = AppConfig()
+            value.editor.path = editorPath
+            try ConfigStore.write(ConfigStore.encode(value), to: ConfigStore.configURL)
+        }
+    }
+
+    /// 解析失败时沿用上次的有效配置。
+    private func reloadConfig() {
+        let data: Data?
+        do { data = try ConfigStore.read(ConfigStore.configURL) } catch {
+            reportFile(ConfigStore.configURL, error)
+            return
+        }
+        guard data != configData else { return }
+        configData = data
+        do {
+            config = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) }?.normalized() ?? AppConfig()
+            AppConfig.current = config
+            configValid = true
+            reportFile(ConfigStore.configURL, nil)
+        } catch {
+            configValid = false
+            reportFile(ConfigStore.configURL, error)
+        }
+    }
+
+    /// 解析失败时停止写入 state.json，避免界面操作覆盖外部编辑；修正后按文件内容恢复。
+    private func reloadState(restoring: Bool) {
+        let data: Data?
+        do { data = try ConfigStore.read(ConfigStore.stateURL) } catch {
+            reportFile(ConfigStore.stateURL, error)
+            return
+        }
+        guard data != stateData else { return }
+        stateData = data
+        guard let data else {
+            stateValid = stateValid || restoring
+            save()
+            return
+        }
+        do {
+            let value = try ConfigStore.decode(data, defaults: RepositoryLibrary())
+            stateValid = true
+            reportFile(ConfigStore.stateURL, nil)
+            restoring ? apply(value) : (library = value)
+        } catch {
+            stateValid = false
+            reportFile(ConfigStore.stateURL, error)
+        }
+    }
+
+    /// 外部修改了 state.json：关闭被移除的标签，打开新增的标签。
+    private func apply(_ value: RepositoryLibrary) {
+        let previous = selected
+        library = value
+        for (path, session) in sessions where !library.tabs.contains(path) {
+            if session.operation != nil {
+                library.tabs.append(path)
+            } else {
+                session.deactivate()
+                sessions.removeValue(forKey: path)
+            }
+        }
+        if selected !== previous {
+            previous?.deactivate()
+            selected?.activate()
+        }
+        Task {
+            for path in library.tabs where sessions[path] == nil {
+                await open(path, select: path == library.selectedPath)
+            }
+        }
+    }
+
+    private func reportFile(_ url: URL, _ failure: Error?) {
+        let message = failure.map { "\(url.path) 无效，修正前沿用上次内容：\n\($0.localizedDescription)" }
+        if let previous = fileErrors[url.path], error == previous {
+            error = message
+        } else if let message {
+            error = message
+        }
+        fileErrors[url.path] = message
     }
 }
