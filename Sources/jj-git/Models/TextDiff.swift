@@ -18,19 +18,24 @@ struct DiffLine: Identifiable, Hashable, Sendable {
         kind == "+" || kind == "-"
     }
 
-    /// 超长行只显示前缀：单个 Text 过宽时渲染空白且布局卡顿；补丁仍使用完整 raw。
+    /// 超长行只显示前缀：单个 Text 过宽时渲染空白；补丁仍使用完整 raw。
     static let displayLimit = 1000
 
-    /// 制表符展开为 4 空格，保证显示宽度与 columns 估算一致。
+    /// 每次渲染都会调用，只处理前缀，耗时与行长无关；制表符展开为 4 空格。
     var display: String {
-        let text = content.replacingOccurrences(of: "\t", with: "    ")
-        guard text.count > Self.displayLimit else { return text }
-        return text.prefix(Self.displayLimit) + " … +\(text.count - Self.displayLimit) 字符"
+        let head = raw.dropFirst().prefix(Self.displayLimit + 1)
+        var text = String(head.prefix(Self.displayLimit)).replacingOccurrences(of: "\t", with: "    ")
+        if head.count > Self.displayLimit {
+            text += " … 整行 \(raw.utf8.count - 1) 字节"
+        }
+        return text.isEmpty ? " " : text
     }
 
-    /// 等宽字体下的显示列数；U+1100 起按双宽计，宁宽勿窄。
+    /// 等宽字体下 display 的列数（不含截断提示）；U+1100 起按双宽计，宁宽勿窄。
     var columns: Int {
-        display.unicodeScalars.reduce(0) { $0 + ($1.value < 0x1100 ? 1 : 2) }
+        raw.unicodeScalars.dropFirst().prefix(Self.displayLimit).reduce(0) {
+            $0 + ($1 == "\t" ? 4 : $1.value < 0x1100 ? 1 : 2)
+        }
     }
 }
 
@@ -92,7 +97,13 @@ struct TextDiff: Sendable {
             }
         }
         maxColumns = hunks.lazy.flatMap(\.lines).map(\.columns).max() ?? 0
-        if raw.contains("Subproject commit ") || raw.contains("mode 120000") {
+        // 只检查头部与子模块的单块差异；对整个 raw 做子串搜索在大差异上耗时数百毫秒。
+        let symlink = headers.contains {
+            $0.contains("mode 120000") || $0.hasPrefix("index ") && $0.hasSuffix(" 120000")
+        }
+        let submodule = hunks.count == 1
+            && hunks[0].lines.allSatisfy { $0.raw.dropFirst().hasPrefix("Subproject commit ") }
+        if symlink || submodule {
             partialRestriction = "子模块与符号链接请按整个文件操作。"
         }
         if raw.hasPrefix("diff --cc ") || raw.hasPrefix("diff --combined ") {

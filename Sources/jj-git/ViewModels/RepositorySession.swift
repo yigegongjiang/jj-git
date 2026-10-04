@@ -203,10 +203,11 @@ extension RepositorySession {
             selectedLines = []
         }
         loadingDiff = diff == nil
+        let previous = diff
         diffTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await command.query.diff(selectedFile, staged: staged)
+                let result = try await command.query.diff(selectedFile, staged: staged, reusing: previous)
                 try Task.checkCancellation()
                 guard generation == diffGeneration else { return }
                 if diff?.raw != result.raw {

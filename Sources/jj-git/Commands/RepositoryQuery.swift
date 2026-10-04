@@ -88,7 +88,8 @@ struct RepositoryQuery: Sendable {
         return try await TextDiff(run(arguments).checkedText())
     }
 
-    func diff(_ file: FileChange, staged: Bool) async throws -> TextDiff {
+    /// 轮询刷新时内容通常未变：原文相同直接复用 previous，跳过大差异的重新解析。
+    func diff(_ file: FileChange, staged: Bool, reusing previous: TextDiff? = nil) async throws -> TextDiff {
         var arguments = ["diff"] + Self.diffOptions
         if file.untracked {
             arguments += ["--no-index", "--", "/dev/null", file.path]
@@ -99,7 +100,11 @@ struct RepositoryQuery: Sendable {
             arguments += ["--", file.path]
         }
         let output = try await GitProcess.run(at: location.root, arguments, accepted: file.untracked ? [0, 1] : [0])
-        return try TextDiff(output.checkedText())
+        let text = try output.checkedText()
+        if let previous, previous.raw.utf8.elementsEqual(text.utf8) {
+            return previous
+        }
+        return TextDiff(text)
     }
 
     func lastMessage() async throws -> String {

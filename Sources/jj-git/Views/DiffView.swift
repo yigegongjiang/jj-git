@@ -136,9 +136,9 @@ private struct DiffLineView: View {
     private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
     private static let columnWidth = ("0" as NSString).size(withAttributes: [.font: font]).width
 
-    /// 勾选 24 + 行号 40×2 + 标记 25 + 末尾换行提示与留白 120。
+    /// 勾选 24 + 行号 40×2 + 标记 25 + 截断 / 末尾换行提示与留白 200。
     static func width(columns: Int) -> CGFloat {
-        ceil(CGFloat(columns) * columnWidth) + 249
+        ceil(CGFloat(columns) * columnWidth) + 329
     }
 
     private var tint: Color {
@@ -170,7 +170,7 @@ private struct DiffLineView: View {
             Text(String(line.kind))
                 .foregroundStyle(line.kind == "+" ? Color.green : line.kind == "-" ? Color.red : Color.secondary)
                 .frame(width: 25)
-            Text(line.content.isEmpty ? " " : line.display).lineLimit(1)
+            Text(line.display).lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
             if line.noNewline {
                 Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary)
