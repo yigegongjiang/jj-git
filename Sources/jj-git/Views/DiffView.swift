@@ -6,6 +6,8 @@ struct DiffView: View {
     let editable: Bool
     @State private var anchor: Int?
     @State private var discarding: Set<Int> = []
+    /// 全局偏好：历史与本地变更共用；默认自动换行。
+    @AppStorage("jj-git.diffWrap") private var wrap = true
 
     private var canEdit: Bool {
         editable && session.operation == nil && session.diff?.partialRestriction == nil
@@ -21,6 +23,7 @@ struct DiffView: View {
         VStack(spacing: 0) {
             SectionHeading(title: editable ? session.selectedFile?.path ?? "差异" : session.selectedCommitFile?
                 .path ?? "差异") {
+                    Toggle("自动换行", isOn: $wrap).toggleStyle(.checkbox).font(.ui(-1))
                     if editable {
                         if canDiscard {
                             Button("放弃选中行") { discarding = session.selectedLines }
@@ -75,8 +78,10 @@ struct DiffView: View {
                 Text(restriction).font(.ui(-2)).foregroundStyle(.secondary).padding(6)
             }
             GeometryReader { geometry in
-                let width = max(DiffLineView.width(columns: diff.maxColumns), geometry.size.width)
-                ScrollView([.horizontal, .vertical]) {
+                // 换行时宽度跟随视口，行高随内容变化；不换行时固定为最长行宽度以便横向滚动。
+                let width = wrap ? geometry.size.width
+                    : max(DiffLineView.width(columns: diff.maxColumns), geometry.size.width)
+                ScrollView(wrap ? .vertical : [.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(diff.hunks) { hunk in
                             HStack(spacing: 12) {
@@ -95,7 +100,7 @@ struct DiffView: View {
                                 .frame(width: width, alignment: .leading).background(Theme.titleBar)
                             ForEach(hunk.lines) { line in
                                 DiffLineView(line: line, selected: session.selectedLines.contains(line.id),
-                                             selectable: canEdit && line.changed) { toggle(line, in: diff) }
+                                             selectable: canEdit && line.changed, wrap: wrap) { toggle(line, in: diff) }
                                     .frame(width: width, alignment: .leading)
                             }
                         }
@@ -131,6 +136,7 @@ private struct DiffLineView: View {
     let line: DiffLine
     let selected: Bool
     let selectable: Bool
+    let wrap: Bool
     let toggle: () -> Void
 
     /// 勾选 24 + 行号 40×2 + 标记 25 + 截断 / 末尾换行提示与留白 200。
@@ -149,7 +155,7 @@ private struct DiffLineView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
             if selectable {
                 Button(action: toggle) {
                     Image(systemName: selected ? "checkmark.square.fill" : "square")
@@ -164,14 +170,19 @@ private struct DiffLineView: View {
             Text(String(line.kind))
                 .foregroundStyle(line.changed ? Theme.foreground : Theme.foreground.opacity(0.5))
                 .frame(width: 25)
-            Text(line.display).lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
+            if wrap {
+                Text(line.display).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Text(line.display).lineLimit(1).fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
+            }
             if line.noNewline {
-                Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary)
+                Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary).fixedSize()
             }
         }
-        .font(.code())
-        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .leading).background(tint)
+        .font(.code()).padding(.vertical, wrap ? 3 : 0)
+        .frame(maxWidth: .infinity, minHeight: height, maxHeight: wrap ? nil : height, alignment: .leading)
+        .background(tint)
         // 增删行底色与强调色相同，选中改用提亮覆盖层区分。
         .overlay(selected ? Theme.foreground.opacity(0.25) : .clear)
     }
