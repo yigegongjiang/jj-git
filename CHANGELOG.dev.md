@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.6] - 2026-10-04
+
+### Added
+
+- 侧边栏分支 / 标签 / 远程 / 工作树分区: 点击标题折叠或展开, 标题显示数量; 默认展开, 状态记忆
+  - `RepositoryLibrary.collapsedSections` (state.json, 空 = 全展开); `Workspace.toggleSection`; `RepositorySidebar.heading` 加折叠按钮
+
 ## [0.3.5] - 2026-10-04
 
 ### Changed

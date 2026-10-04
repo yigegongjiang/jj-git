@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.6] - 2026-10-04
+
+### Added
+
+- 侧边栏分支 / 标签 / 远程 / 工作树分区: 点击标题折叠或展开, 标题显示数量; 默认展开, 状态记忆
+
 ## [0.3.5] - 2026-10-04
 
 ### Changed
