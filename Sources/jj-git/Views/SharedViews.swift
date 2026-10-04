@@ -62,6 +62,44 @@ struct ErrorBanner: View {
     }
 }
 
+/// 隐藏标题栏后的顶部条：与窗口按钮同一行，左侧让出窗口按钮（实测右缘 70pt）。
+struct WindowBar<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        HStack(spacing: 8) { content() }.padding(.leading, 78).padding(.trailing, 10).frame(height: 32)
+            .windowDragArea()
+    }
+}
+
+extension View {
+    /// 标题栏隐藏后由空白处接管：拖动移动窗口，双击按系统「双击窗口标题栏」设置缩放或最小化。
+    /// SwiftUI 手势会让窗口无法拖动，因此用 AppKit 视图处理。
+    func windowDragArea() -> some View {
+        background(WindowDragArea())
+    }
+}
+
+private struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context _: Context) -> NSView {
+        DragView()
+    }
+
+    func updateNSView(_: NSView, context _: Context) {
+    }
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            guard let window else { return }
+            guard event.clickCount == 2 else { return window.performDrag(with: event) }
+            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+            case "Minimize": window.miniaturize(nil)
+            case "None": break
+            default: window.zoom(nil)
+            }
+        }
+    }
+}
+
 struct SectionHeading<Trailing: View>: View {
     let title: String
     @ViewBuilder let trailing: () -> Trailing

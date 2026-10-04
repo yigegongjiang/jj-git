@@ -66,7 +66,7 @@ struct RepositoryView: View {
             .help("在编辑器打开 ⇧⌘E")
             Button { session.refresh(forceHistory: true) } label: { Image(systemName: "arrow.clockwise") }
                 .help("刷新 ⌘R").disabled(session.operation != nil)
-        }.buttonStyle(.borderless).controlSize(.small).padding(.horizontal, 10).frame(height: 38)
+        }.buttonStyle(.borderless).controlSize(.small).padding(.horizontal, 10).frame(height: 32)
     }
 
     private var statusBar: some View {

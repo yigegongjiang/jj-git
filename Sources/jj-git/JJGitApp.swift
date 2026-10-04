@@ -12,6 +12,7 @@ struct JJGitApp: App {
         Window(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "jj-git", id: "main") {
             ContentView(workspace: workspace)
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1360, height: 840)
         .commands { WorkspaceCommands(workspace: workspace) }
     }

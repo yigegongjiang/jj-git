@@ -7,10 +7,13 @@ struct LibraryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SectionHeading(title: "仓库") {
+            WindowBar {
+                SidebarToggle(workspace: workspace)
+                Spacer()
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
                     .buttonStyle(.plain).help("新建分组")
             }
+            Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     repositories(in: nil)
@@ -108,38 +111,54 @@ struct LibraryView: View {
     }
 }
 
+struct SidebarToggle: View {
+    let workspace: Workspace
+
+    var body: some View {
+        Button { workspace.toggleSidebar() } label: { Image(systemName: "sidebar.left") }
+            .buttonStyle(.plain).foregroundStyle(.secondary)
+            .help(workspace.library.sidebarHidden == true ? "显示侧边栏 ⌃⌘S" : "隐藏侧边栏 ⌃⌘S")
+    }
+}
+
 struct RepositoryTabs: View {
     @Bindable var workspace: Workspace
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 0) {
-                ForEach(workspace.library.tabs, id: \.self) { path in
-                    HStack(spacing: 8) {
-                        Button { workspace.select(path) } label: {
-                            HStack(spacing: 5) {
-                                if workspace.sessions[path]?.operation != nil {
-                                    ProgressView().controlSize(.mini)
+        GeometryReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: 0) {
+                    ForEach(workspace.library.tabs, id: \.self) { path in
+                        HStack(spacing: 8) {
+                            Button { workspace.select(path) } label: {
+                                HStack(spacing: 5) {
+                                    if workspace.sessions[path]?.operation != nil {
+                                        ProgressView().controlSize(.mini)
+                                    }
+                                    Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(1)
+                                        .foregroundStyle(workspace.sessions[path] == nil ? .secondary : .primary)
                                 }
-                                Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(1)
-                                    .foregroundStyle(workspace.sessions[path] == nil ? .secondary : .primary)
+                            }.buttonStyle(.plain)
+                            Button { workspace.close(path) } label: {
+                                Image(systemName: "xmark").font(.system(size: 9))
                             }
-                        }.buttonStyle(.plain)
-                        Button { workspace.close(path) } label: { Image(systemName: "xmark").font(.system(size: 9)) }
                             .buttonStyle(.plain).help("关闭标签 ⌘W")
                             .disabled(workspace.sessions[path]?.operation != nil)
-                    }
-                    .padding(.horizontal, 12).frame(height: 32)
-                    .background(workspace.library.selectedPath == path ? Color.accentColor.opacity(0.12) : .clear)
-                    .overlay(alignment: .bottom) {
-                        if workspace.library.selectedPath == path {
-                            Color.accentColor.frame(height: 2)
                         }
+                        .padding(.horizontal, 12).frame(height: 32)
+                        .background(workspace.library.selectedPath == path ? Color.accentColor.opacity(0.12) : .clear)
+                        .overlay(alignment: .bottom) {
+                            if workspace.library.selectedPath == path {
+                                Color.accentColor.frame(height: 2)
+                            }
+                        }
+                        .help(path)
+                        Divider().frame(height: 18)
                     }
-                    .help(path)
-                    Divider().frame(height: 18)
                 }
-            }
-        }.scrollIndicators(.hidden).frame(height: 32)
+                // 撑满可见宽度，标签右侧空白也能拖动 / 双击缩放窗口。
+                .frame(minWidth: proxy.size.width, alignment: .leading).windowDragArea()
+            }.scrollIndicators(.hidden)
+        }.frame(height: 32)
     }
 }

@@ -16,6 +16,10 @@ struct WorkspaceCommands: Commands {
                 }
             }.keyboardShortcut("w").disabled(workspace.selected == nil || workspace.selected?.operation != nil)
         }
+        CommandGroup(replacing: .sidebar) {
+            Button(workspace.library.sidebarHidden == true ? "显示侧边栏" : "隐藏侧边栏") { workspace.toggleSidebar() }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+        }
         CommandMenu("仓库") {
             Button("刷新") { workspace.selected?.refresh(forceHistory: true) }.keyboardShortcut("r")
             Button("提交历史") { workspace.selected?.changeSection(.history) }.keyboardShortcut("1")

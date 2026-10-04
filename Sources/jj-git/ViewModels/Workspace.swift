@@ -115,6 +115,11 @@ final class Workspace {
         save()
     }
 
+    func toggleSidebar() {
+        library.sidebarHidden = !(library.sidebarHidden ?? false)
+        save()
+    }
+
     func toggleGroup(_ groupID: UUID) {
         guard let index = library.groups.firstIndex(where: { $0.id == groupID }) else { return }
         library.groups[index].collapsed = !(library.groups[index].collapsed ?? false)

@@ -25,6 +25,7 @@ struct RepositoryLibrary: Codable, Sendable {
     var tabs: [String] = []
     var selectedPath: String?
     var editorPath: String?
+    var sidebarHidden: Bool?
 }
 
 struct ScanResult: Sendable {
