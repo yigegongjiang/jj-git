@@ -26,7 +26,7 @@ struct RepositoryView: View {
                     Button("打开终端") { workspace.openTerminal(session.location.root) }
                 }.font(.caption).padding(8).background(.orange.opacity(0.1))
             }
-            SplitPane(autosave: "repository.sidebar", initial: 170, minimum: (130, 480)) {
+            SplitPane(name: "repository.sidebar", initial: 170, minimum: (130, 480)) {
                 RepositorySidebar(workspace: workspace, session: session, dialog: $dialog)
             } second: {
                 if session.section == .changes {

@@ -5,10 +5,10 @@ struct ChangesView: View {
     @Bindable var session: RepositorySession
 
     var body: some View {
-        SplitPane(autosave: "changes.files", initial: 300, minimum: (220, 290)) {
-            SplitPane(autosave: "changes.composer", vertical: true, pinned: .second, initial: 190,
+        SplitPane(name: "changes.files", initial: 300, minimum: (220, 290)) {
+            SplitPane(name: "changes.composer", vertical: true, pinned: .second, initial: 190,
                       minimum: (180, 150)) {
-                SplitPane(autosave: "changes.lists", vertical: true, pinned: nil, initial: 260, minimum: (90, 90)) {
+                SplitPane(name: "changes.lists", vertical: true, pinned: nil, initial: 260, minimum: (90, 90)) {
                     ChangeList(workspace: workspace, session: session, staged: false)
                 } second: {
                     ChangeList(workspace: workspace, session: session, staged: true)

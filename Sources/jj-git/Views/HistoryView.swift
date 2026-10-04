@@ -5,10 +5,10 @@ struct HistoryView: View {
     @Binding var dialog: RepositoryDialog?
 
     var body: some View {
-        SplitPane(autosave: "history.graph", vertical: true, pinned: .second, initial: 330, minimum: (120, 160)) {
+        SplitPane(name: "history.graph", vertical: true, pinned: .second, initial: 330, minimum: (120, 160)) {
             CommitGraphPanel(session: session, dialog: $dialog)
         } second: {
-            SplitPane(autosave: "history.detail", initial: 300, minimum: (200, 290)) {
+            SplitPane(name: "history.detail", initial: 300, minimum: (200, 290)) {
                 detailPanel
             } second: {
                 DiffView(session: session, editable: false)
@@ -19,7 +19,7 @@ struct HistoryView: View {
     private var detailPanel: some View {
         VStack(spacing: 0) {
             if let detail = session.commitDetail {
-                SplitPane(autosave: "history.message", vertical: true, initial: 110, minimum: (40, 80)) {
+                SplitPane(name: "history.message", vertical: true, initial: 110, minimum: (40, 80)) {
                     ScrollView {
                         Text(detail.message).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(10)

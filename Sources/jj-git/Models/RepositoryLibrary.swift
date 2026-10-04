@@ -36,6 +36,17 @@ struct RepositoryLibrary: Codable, Sendable {
     var tabs: [String] = []
     var selectedPath: String?
     var sidebarHidden = false
+    /// 主窗口位置与尺寸（屏幕坐标）；nil 时用默认尺寸。
+    var window: WindowFrame?
+    /// 分栏名 -> 保持尺寸一栏的宽 / 高。
+    var splits: [String: Double] = [:]
+}
+
+struct WindowFrame: Codable, Equatable, Sendable {
+    var minX: Double
+    var minY: Double
+    var width: Double
+    var height: Double
 }
 
 struct ScanResult: Sendable {

@@ -130,6 +130,18 @@ final class Workspace {
         save()
     }
 
+    func setSplit(_ name: String, size: Double) {
+        guard library.splits[name] != size else { return }
+        library.splits[name] = size
+        save()
+    }
+
+    func setWindowFrame(_ frame: WindowFrame) {
+        guard library.window != frame else { return }
+        library.window = frame
+        save()
+    }
+
     func toggleSidebar() {
         library.sidebarHidden.toggle()
         save()

@@ -9,13 +9,15 @@ struct ContentView: View {
                 main
             } else {
                 // 每栏单独承载，各自让顶部条占用隐藏的标题栏区域。
-                SplitPane(autosave: "library", initial: 190, minimum: (150, 600)) {
+                SplitPane(name: "library", initial: 190, minimum: (150, 600)) {
                     LibraryView(workspace: workspace).ignoresSafeArea(.container, edges: .top)
                 } second: { main }
                     .ignoresSafeArea(.container, edges: .top)
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
+        .environment(\.workspace, workspace)
+        .background(WindowFrameKeeper(workspace: workspace))
         .task {
             await workspace.restore()
             for path in ProcessInfo.processInfo.arguments.dropFirst() where path.hasPrefix("/") {

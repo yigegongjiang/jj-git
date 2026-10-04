@@ -113,14 +113,19 @@ struct SectionHeading<Trailing: View>: View {
     }
 }
 
-/// 可拖动分栏，位置按 `autosave` 写入 UserDefaults，切换标签 / 页面 / 重启后保留。
+extension EnvironmentValues {
+    /// 分栏 / 窗口位置写入 state.json。NSHostingView 不继承外层环境，SplitPane 显式向各栏传递。
+    @Entry var workspace: Workspace?
+}
+
+/// 可拖动分栏，位置写入 state.json `splits`，切换标签 / 页面 / 重启后保留。
 /// SwiftUI HSplitView 首次布局把首栏撑到 maxWidth 且不记忆位置，因此用 NSSplitView。
 /// 不用 NSSplitViewController：其约束会让嵌套在同向分栏里的分割线无法拖动。
 /// 各栏内容在独立 NSHostingView 中求值：闭包内 MUST NOT 读取外层 @State（不会触发刷新），只传 Binding。
 struct SplitPane<First: View, Second: View>: NSViewRepresentable {
     enum Pinned { case first, second }
 
-    let autosave: String
+    let name: String
     var vertical = false
     /// 窗口缩放时保持尺寸的一栏；nil 时两栏按比例缩放。`initial` 为它（nil 时为首栏）的默认尺寸。
     var pinned: Pinned? = .first
@@ -129,28 +134,30 @@ struct SplitPane<First: View, Second: View>: NSViewRepresentable {
     @ViewBuilder let first: () -> First
     @ViewBuilder let second: () -> Second
 
-    func makeNSView(context _: Context) -> SplitPaneView {
+    func makeNSView(context: Context) -> SplitPaneView {
+        let workspace = context.environment.workspace
         let view = SplitPaneView()
         view.isVertical = !vertical
         view.dividerStyle = .thin
         view.delegate = view
-        view.addArrangedSubview(Self.host(SplitPaneContent(content: first)))
-        view.addArrangedSubview(Self.host(SplitPaneContent(content: second)))
-        view.pinned = pinned.map { $0 == .first ? 0 : 1 }
+        view.addArrangedSubview(Self.host(SplitPaneContent(workspace: workspace, content: first)))
+        view.addArrangedSubview(Self.host(SplitPaneContent(workspace: workspace, content: second)))
+        view.name = name
+        view.workspace = workspace
+        view.pinned = pinned == .second ? 1 : 0
+        view.proportional = pinned == nil
         view.minimum = minimum
-        view.initial = pinned == .second ? -initial : initial
-        // 须在添加分栏之后设置，否则不会恢复已保存的位置。
-        // 首次缩放就会写入 0 尺寸，因此在此之前判断是否已有保存值。
-        let name = "jj-git." + autosave
-        view.placed = UserDefaults.standard.object(forKey: "NSSplitView Subview Frames " + name) != nil
-        view.autosaveName = name
+        view.size = workspace?.library.splits[name].map { CGFloat($0) } ?? initial
         return view
     }
 
-    func updateNSView(_ view: SplitPaneView, context _: Context) {
+    func updateNSView(_ view: SplitPaneView, context: Context) {
+        let workspace = context.environment.workspace
         let panes = view.arrangedSubviews
-        (panes[0] as? NSHostingView<SplitPaneContent<First>>)?.rootView = SplitPaneContent(content: first)
-        (panes[1] as? NSHostingView<SplitPaneContent<Second>>)?.rootView = SplitPaneContent(content: second)
+        (panes[0] as? NSHostingView<SplitPaneContent<First>>)?.rootView =
+            SplitPaneContent(workspace: workspace, content: first)
+        (panes[1] as? NSHostingView<SplitPaneContent<Second>>)?.rootView =
+            SplitPaneContent(workspace: workspace, content: second)
     }
 
     private static func host<V: View>(_ view: V) -> NSHostingView<V> {
@@ -163,19 +170,23 @@ struct SplitPane<First: View, Second: View>: NSViewRepresentable {
 
 /// 闭包在分栏自己的 body 中执行，使其中读取的 @Observable 状态由该分栏追踪刷新。
 struct SplitPaneContent<Content: View>: View {
+    let workspace: Workspace?
     let content: () -> Content
     var body: some View {
-        content().frame(maxWidth: .infinity, maxHeight: .infinity)
+        content().frame(maxWidth: .infinity, maxHeight: .infinity).environment(\.workspace, workspace)
     }
 }
 
 final class SplitPaneView: NSSplitView, NSSplitViewDelegate {
+    var name = ""
+    weak var workspace: Workspace?
     var minimum: (first: CGFloat, second: CGFloat) = (0, 0)
-    var pinned: Int?
-    /// 首栏默认尺寸；负数表示次栏默认尺寸。
-    var initial: CGFloat = 0
-    /// 已恢复保存值或已放置默认尺寸。
-    var placed = false
+    /// 保持尺寸的一栏；proportional 时为首栏，仅用于记录位置。
+    var pinned = 0
+    var proportional = false
+    /// pinned 栏的尺寸：首次布局时放置，拖动结束后写回。
+    var size: CGFloat = 0
+    private var placed = false
 
     private var length: CGFloat {
         isVertical ? bounds.width : bounds.height
@@ -183,15 +194,23 @@ final class SplitPaneView: NSSplitView, NSSplitViewDelegate {
 
     override func layout() {
         super.layout()
-        guard !placed, length > abs(initial) else { return }
+        guard !placed, length > minimum.first + minimum.second + dividerThickness else { return }
         placed = true
-        setPosition(initial >= 0 ? initial : length + initial - dividerThickness, ofDividerAt: 0)
+        // 窗口比上次小时由 constrainMin/MaxCoordinate 收敛到最小尺寸以内。
+        setPosition(pinned == 0 ? size : length - size - dividerThickness, ofDividerAt: 0)
+    }
+
+    /// NSSplitView 在 mouseDown 内跟踪分割线拖动，返回即拖动结束。
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        let frame = arrangedSubviews[pinned].frame
+        size = (isVertical ? frame.width : frame.height).rounded()
+        workspace?.setSplit(name, size: Double(size))
     }
 
     /// 非 Auto Layout 下 holdingPriority 不生效，窗口缩放时由此固定 pinned 栏。
     func splitView(_: NSSplitView, shouldAdjustSizeOfSubview view: NSView) -> Bool {
-        guard let pinned else { return true }
-        return view !== arrangedSubviews[pinned]
+        proportional || view !== arrangedSubviews[pinned]
     }
 
     func splitView(_: NSSplitView, constrainMinCoordinate proposed: CGFloat, ofSubviewAt _: Int) -> CGFloat {
@@ -200,5 +219,59 @@ final class SplitPaneView: NSSplitView, NSSplitViewDelegate {
 
     func splitView(_: NSSplitView, constrainMaxCoordinate proposed: CGFloat, ofSubviewAt _: Int) -> CGFloat {
         min(proposed, length - minimum.second - dividerThickness)
+    }
+}
+
+/// 主窗口位置写入 state.json `window`，替代 SwiftUI 写入 UserDefaults 的自动保存。
+struct WindowFrameKeeper: NSViewRepresentable {
+    let workspace: Workspace
+
+    func makeNSView(context _: Context) -> KeeperView {
+        let view = KeeperView()
+        view.workspace = workspace
+        return view
+    }
+
+    func updateNSView(_: KeeperView, context _: Context) {
+    }
+
+    final class KeeperView: NSView {
+        weak var workspace: Workspace?
+        private var observers: [NSObjectProtocol] = []
+        private var pending: Task<Void, Never>?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            pending?.cancel()
+            guard let window else { return }
+            window.setFrameAutosaveName("")
+            if let saved = workspace?.library.window {
+                let frame = NSRect(x: saved.minX, y: saved.minY, width: saved.width, height: saved.height)
+                if NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) }) {
+                    window.setFrame(frame, display: true)
+                }
+            }
+            for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
+                observers.append(NotificationCenter.default.addObserver(
+                    forName: name, object: window, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.scheduleSave() }
+                })
+            }
+        }
+
+        /// 拖动 / 缩放过程中连续触发，停止 0.5 秒后再写入。
+        private func scheduleSave() {
+            pending?.cancel()
+            pending = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled, let self, let frame = window?.frame else { return }
+                workspace?.setWindowFrame(WindowFrame(
+                    minX: frame.minX, minY: frame.minY, width: frame.width, height: frame.height
+                ))
+            }
+        }
     }
 }

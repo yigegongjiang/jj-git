@@ -44,9 +44,9 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `jj-git-debug/`) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
   - `config.json`: 设置 (编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
-  - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏; 外部修改同步开关标签
+  - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`); 外部修改同步开关标签
   - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅
-- 分栏位置: `NSSplitView` autosave 写入 `UserDefaults` (`jj-git.*`), 跨标签 / 页面 / 重启保留
+- MUST NOT 主动使用 `UserDefaults`: 窗口 / 分栏的 AppKit 自动保存已关闭, 改写 `state.json`
 
 ## 结构
 
