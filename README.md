@@ -45,7 +45,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / 签名 (默认 ad-hoc, 传 Team 用 Apple Development)
 - Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
 - 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
-- 标签释放: 未激活超过 `tabs.idleUnloadSeconds` (默认 180 秒, 1–86400) 释放 session, 保留标签位置, 点击重新加载; Git 操作完成后释放; 未提交的提交信息与视图状态随 session 清除; 配置修改后重启生效
+- 标签释放: 未激活超过 `tabs.idleUnloadSeconds` (默认 180 秒, 1–86400) 释放 session, 保留标签位置; 未挂载标签为灰紫色, 点击重新加载; Git 操作完成后释放; 未提交的提交信息与视图状态随 session 清除; 配置修改后重启生效
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) JSON; 启动时读取; 配置解析失败使用默认值并提示, 状态解析失败停写

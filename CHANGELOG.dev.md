@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.17] - 2026-10-04
+
+### Added
+
+- 未挂载标签用灰紫色文字标记，悬停提示点击重新加载
+  - `RepositoryTabs` 按 session 是否存在切换 `Theme.badge` / `Theme.foreground` 与悬停说明
+
 ## [0.4.16] - 2026-10-04
 
 ### Added

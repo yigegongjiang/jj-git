@@ -133,6 +133,7 @@ struct RepositoryTabs: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
                     ForEach(workspace.library.tabs, id: \.self) { path in
+                        let mounted = workspace.sessions[path] != nil
                         HStack(spacing: 8) {
                             Button { workspace.select(path) } label: {
                                 HStack(spacing: 5) {
@@ -140,7 +141,7 @@ struct RepositoryTabs: View {
                                         ProgressView().controlSize(.mini)
                                     }
                                     Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(1)
-                                        .foregroundStyle(workspace.sessions[path] == nil ? .secondary : .primary)
+                                        .foregroundStyle(mounted ? Theme.foreground : Theme.badge)
                                 }
                             }.buttonStyle(.plain)
                             Button { workspace.close(path) } label: {
@@ -156,7 +157,7 @@ struct RepositoryTabs: View {
                                 Theme.accent.frame(height: 2)
                             }
                         }
-                        .help(path)
+                        .help(mounted ? path : "未挂载，点击重新加载\n\(path)")
                         ThemedDivider().frame(height: 18)
                     }
                 }

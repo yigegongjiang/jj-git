@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.17] - 2026-10-04
+
+### Added
+
+- 未挂载标签用灰紫色文字标记，悬停提示点击重新加载
+
 ## [0.4.16] - 2026-10-04
 
 ### Added
