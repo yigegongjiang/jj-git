@@ -103,13 +103,21 @@ private struct WindowDragArea: NSViewRepresentable {
 
 struct SectionHeading<Trailing: View>: View {
     let title: String
+    var titleAction: (() -> Void)?
     @ViewBuilder let trailing: () -> Trailing
     var body: some View {
         HStack {
-            Text(title).font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
-            Spacer()
+            if let titleAction {
+                Button(action: titleAction) {
+                    Text(title).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).help("显示全部差异").accessibilityLabel(title)
+            } else {
+                Text(title)
+                Spacer()
+            }
             trailing()
         }
+        .font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
         .padding(.horizontal, 10).frame(height: 28).background(Theme.titleBar)
     }
 }

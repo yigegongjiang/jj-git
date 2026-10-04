@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ChangesView: View {
@@ -39,7 +40,8 @@ struct ChangeList: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)") {
+            SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)",
+                           titleAction: showOverview) {
                 HStack(spacing: 10) {
                     Button { transfer(selectedFiles) } label: {
                         Image(systemName: staged ? "chevron.up" : "chevron.down")
@@ -57,6 +59,7 @@ struct ChangeList: View {
                 Text(staged ? "暂存文件后提交" : "工作目录无变更")
                     .font(.ui(-2)).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle()).onTapGesture(perform: showOverview)
             } else {
                 List(selection: $selection) {
                     ForEach(files) { file in
@@ -82,13 +85,12 @@ struct ChangeList: View {
                     transfer(selectedFiles)
                     return .handled
                 }
-                .task(id: selection) {
-                    await Task.yield()
-                    guard !Task.isCancelled else { return }
+                .onChange(of: selection) { _, _ in
                     if let file = files.first(where: { selection.contains($0.path) }) {
                         session.selectFile(file, staged: staged)
                     }
                 }
+                .background(ChangeListBlankArea(action: showOverview))
                 .task(id: files) {
                     await Task.yield()
                     guard !Task.isCancelled else { return }
@@ -137,6 +139,11 @@ struct ChangeList: View {
                 Button("在编辑器打开") { workspace.openEditor(session.location.root + "/" + file.path) }
             }
         }
+    }
+
+    private func showOverview() {
+        selection = []
+        session.selectChanges(staged: staged)
     }
 
     private func transfer(_ files: [FileChange]) {
@@ -210,6 +217,67 @@ struct CommitComposer: View {
                 session.perform(.push(remote: target.remote, branch: target.branch, lease: amend ? target.lease : nil),
                                 title: "Push")
             }
+        }
+    }
+}
+
+/// 原生列表空白点击独立于 selection；保留文件行与滚动条的原生交互。
+private struct ChangeListBlankArea: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> BlankAreaView {
+        BlankAreaView()
+    }
+
+    func updateNSView(_ view: BlankAreaView, context: Context) {
+        view.action = action
+    }
+
+    static func dismantleNSView(_ view: BlankAreaView, coordinator: ()) {
+        view.stopMonitoring()
+    }
+
+    final class BlankAreaView: NSView {
+        var action: (() -> Void)?
+        private var monitor: Any?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            nil
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stopMonitoring()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+                MainActor.assumeIsolated { self?.handle(event) }
+                return event
+            }
+        }
+
+        func stopMonitoring() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            monitor = nil
+        }
+
+        private func handle(_ event: NSEvent) {
+            guard event.window === window, let content = window?.contentView,
+                  bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+            let point = content.superview?.convert(event.locationInWindow, from: nil) ?? event.locationInWindow
+            var hit = content.hitTest(point)
+            while let view = hit {
+                if view is NSScroller || view is NSTableRowView {
+                    return
+                }
+                if let table = view as? NSTableView,
+                   table.row(at: table.convert(event.locationInWindow, from: nil)) >= 0 {
+                    return
+                }
+                hit = view.superview
+            }
+            action?()
         }
     }
 }

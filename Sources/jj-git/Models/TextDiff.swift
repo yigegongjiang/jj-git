@@ -255,9 +255,9 @@ struct DiffTarget: Identifiable, Hashable, Sendable {
         (staged ? "staged:" : "worktree:") + path
     }
 
-    static func changes(_ status: WorkingCopyStatus) -> [Self] {
-        status.changes.filter(\.unstaged).map { Self(path: $0.path, file: $0) }
-            + status.changes.filter(\.staged).map { Self(path: $0.path, file: $0, staged: true) }
+    static func changes(_ status: WorkingCopyStatus, staged: Bool) -> [Self] {
+        status.changes.filter { staged ? $0.staged : $0.unstaged }
+            .map { Self(path: $0.path, file: $0, staged: staged) }
     }
 }
 

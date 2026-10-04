@@ -50,6 +50,7 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored var diffTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var referenceKey = ""
+    @ObservationIgnored var preparingDiffOverview = false
     @ObservationIgnored var diffGeneration = 0
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var refreshFailure: String?
@@ -168,27 +169,12 @@ final class RepositorySession: Identifiable {
             if changed {
                 selectedLines = []
             }
-            loadDiffOverview(DiffTarget.changes(status))
+            loadDiffOverview(DiffTarget.changes(status, staged: selectedStaged))
         }
     }
 }
 
 extension RepositorySession {
-    func selectFile(_ file: FileChange?, staged: Bool) {
-        if let file, let entry = fileDiffs.first(where: { $0.target.path == file.path && $0.target.staged == staged }) {
-            focusDiff(entry)
-            diffScrollID = entry.id
-            diffScrollRequest += 1
-            return
-        }
-        fileDiffs = []
-        selectedFile = file
-        selectedStaged = staged
-        selectedLines = []
-        diff = nil
-        loadFileDiff(clearSelection: true)
-    }
-
     func changeSection(_ section: RepositorySection) {
         self.section = section
         fileDiffs = []
@@ -196,7 +182,7 @@ extension RepositorySession {
         diffScrollID = nil
         if section == .changes {
             detailTask?.cancel()
-            loadDiffOverview(DiffTarget.changes(status))
+            selectChanges(staged: false)
         } else {
             selectCommit(selectedCommit ?? graph.first?.commit)
         }
@@ -207,6 +193,7 @@ extension RepositorySession {
     }
 
     private func loadFileDiff(clearSelection: Bool) {
+        preparingDiffOverview = false
         diffTask?.cancel()
         diffGeneration += 1
         let generation = diffGeneration
@@ -241,6 +228,7 @@ extension RepositorySession {
         detailTask?.cancel()
         diffTask?.cancel()
         diffGeneration += 1
+        preparingDiffOverview = false
         selectedCommit = commit
         fileDiffs = []
         diffFallback = false
