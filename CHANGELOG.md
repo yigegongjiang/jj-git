@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.6] - 2026-10-04
+
+### Fixed
+
+- 命令记录写入不再触发仓库刷新; 失败信息中的 URL 凭据同样脱敏
+
 ## [0.4.5] - 2026-10-04
 
 ### Added

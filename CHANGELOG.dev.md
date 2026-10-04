@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.6] - 2026-10-04
+
+### Fixed
+
+- 命令记录写入不再触发仓库刷新; 失败信息中的 URL 凭据同样脱敏
+  - `RepositoryMonitor(location:)` 同样忽略 `GitCommandLog.directory` (Debug `debug-config/logs` 位于工程工作区内); 错误列走 `redact`
+
 ## [0.4.5] - 2026-10-04
 
 ### Added
