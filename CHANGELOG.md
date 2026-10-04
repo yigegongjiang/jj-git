@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.7] - 2026-10-04
+
+### Fixed
+
+- 差异区长行可左右滚动, 行背景铺满; 超过 1000 字符的行截断显示 (暂存不受影响)
+
 ## [0.2.6] - 2026-10-04
 
 ### Changed

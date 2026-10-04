@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.7] - 2026-10-04
+
+### Fixed
+
+- 差异区长行可左右滚动, 行背景铺满; 超过 1000 字符的行截断显示 (暂存不受影响)
+  - 根因: 二维 `ScrollView` 内 `LazyVStack` 宽度被压到视口宽度, 长行被裁剪
+  - `TextDiff.maxColumns` 解析时算出全部行最大列数 (U+1100 起双宽, tab 展开 4 空格), `DiffView` 据此固定内容宽度
+  - `DiffLine.display` 截断 `displayLimit` (1000) 字符; 补丁仍用完整 `raw`
+
 ## [0.2.6] - 2026-10-04
 
 ### Changed
