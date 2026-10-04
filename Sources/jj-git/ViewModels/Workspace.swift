@@ -24,7 +24,7 @@ final class Workspace {
         library.selectedPath.flatMap { sessions[$0] }
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init() {
         library = RepositoryLibrary()
         config = AppConfig()
         do {
@@ -32,10 +32,6 @@ final class Workspace {
             let defaultConfig = try ConfigStore.encode(AppConfig())
             if (try? ConfigStore.read(ConfigStore.defaultsURL)) != defaultConfig {
                 try ConfigStore.write(defaultConfig, to: ConfigStore.defaultsURL)
-            }
-            do { try migrate(defaults) } catch {
-                stateValid = false // 不写空 state.json，下次启动重试导入。
-                throw error
             }
             if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
                 try ConfigStore.write(defaultConfig, to: ConfigStore.configURL)
@@ -135,13 +131,13 @@ final class Workspace {
     }
 
     func toggleSidebar() {
-        library.sidebarHidden = !(library.sidebarHidden ?? false)
+        library.sidebarHidden.toggle()
         save()
     }
 
     func toggleGroup(_ groupID: UUID) {
         guard let index = library.groups.firstIndex(where: { $0.id == groupID }) else { return }
-        library.groups[index].collapsed = !(library.groups[index].collapsed ?? false)
+        library.groups[index].collapsed.toggle()
         save()
     }
 
@@ -302,21 +298,6 @@ extension Workspace {
         } catch { self.error = error.localizedDescription }
     }
 
-    /// 旧版本存于 UserDefaults；仅在 state.json 不存在时导入一次，原数据保留不删。
-    private func migrate(_ defaults: UserDefaults) throws {
-        guard !FileManager.default.fileExists(atPath: ConfigStore.stateURL.path),
-              let data = defaults.data(forKey: "repository-library") else { return }
-        let legacy = try ConfigStore.decode(data, defaults: RepositoryLibrary())
-        try ConfigStore.write(ConfigStore.encode(legacy), to: ConfigStore.stateURL)
-        if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let editorPath = object["editorPath"] as? String {
-            var value = AppConfig()
-            value.editor.path = editorPath
-            try ConfigStore.write(ConfigStore.encode(value), to: ConfigStore.configURL)
-        }
-    }
-
     /// 解析失败时沿用上次的有效配置。
     private func reloadConfig() {
         let data: Data?
@@ -347,7 +328,7 @@ extension Workspace {
         guard data != stateData else { return }
         stateData = data
         guard let data else {
-            stateValid = stateValid || restoring
+            stateValid = true
             save()
             return
         }

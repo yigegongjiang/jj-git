@@ -3,8 +3,19 @@ import Foundation
 struct RepositoryGroup: Identifiable, Codable, Equatable, Sendable {
     var id = UUID()
     var name: String
-    /// 可选字段，兼容旧配置。
-    var collapsed: Bool?
+    var collapsed = false
+
+    /// 外部编辑 state.json 新增分组时只需填写 name。
+    init(name: String) {
+        self.name = name
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        collapsed = try container.decodeIfPresent(Bool.self, forKey: .collapsed) ?? false
+    }
 }
 
 struct SavedRepository: Identifiable, Codable, Equatable, Sendable {
@@ -24,7 +35,7 @@ struct RepositoryLibrary: Codable, Sendable {
     var groups: [RepositoryGroup] = []
     var tabs: [String] = []
     var selectedPath: String?
-    var sidebarHidden: Bool?
+    var sidebarHidden = false
 }
 
 struct ScanResult: Sendable {

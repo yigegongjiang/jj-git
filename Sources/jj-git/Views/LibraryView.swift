@@ -19,13 +19,13 @@ struct LibraryView: View {
                     repositories(in: nil)
                     ForEach(sortedGroups) { group in
                         Section {
-                            if group.collapsed != true {
+                            if !group.collapsed {
                                 repositories(in: group.id)
                             }
                         } header: {
                             Button { workspace.toggleGroup(group.id) } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: group.collapsed == true ? "chevron.right" : "chevron.down")
+                                    Image(systemName: group.collapsed ? "chevron.right" : "chevron.down")
                                         .font(.system(size: 9, weight: .semibold)).frame(width: 10)
                                     Text(group.name).font(.system(size: 11, weight: .semibold))
                                     Spacer(minLength: 0)
@@ -117,7 +117,7 @@ struct SidebarToggle: View {
     var body: some View {
         Button { workspace.toggleSidebar() } label: { Image(systemName: "sidebar.left") }
             .buttonStyle(.plain).foregroundStyle(.secondary)
-            .help(workspace.library.sidebarHidden == true ? "显示侧边栏 ⌃⌘S" : "隐藏侧边栏 ⌃⌘S")
+            .help(workspace.library.sidebarHidden ? "显示侧边栏 ⌃⌘S" : "隐藏侧边栏 ⌃⌘S")
     }
 }
 

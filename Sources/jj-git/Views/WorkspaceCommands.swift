@@ -20,7 +20,7 @@ struct WorkspaceCommands: Commands {
             }.keyboardShortcut("w").disabled(workspace.selected == nil || workspace.selected?.operation != nil)
         }
         CommandGroup(replacing: .sidebar) {
-            Button(workspace.library.sidebarHidden == true ? "显示侧边栏" : "隐藏侧边栏") { workspace.toggleSidebar() }
+            Button(workspace.library.sidebarHidden ? "显示侧边栏" : "隐藏侧边栏") { workspace.toggleSidebar() }
                 .keyboardShortcut("s", modifiers: [.control, .command])
         }
         CommandMenu("仓库") {

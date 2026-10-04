@@ -5,14 +5,14 @@ struct ContentView: View {
 
     var body: some View {
         HSplitView {
-            if workspace.library.sidebarHidden != true {
+            if !workspace.library.sidebarHidden {
                 // HSplitView 每栏单独承载，各自让顶部条占用隐藏的标题栏区域。
                 LibraryView(workspace: workspace).frame(minWidth: 160, idealWidth: 190, maxWidth: 220)
                     .ignoresSafeArea(.container, edges: .top)
             }
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
-                    if workspace.library.sidebarHidden == true {
+                    if workspace.library.sidebarHidden {
                         WindowBar { SidebarToggle(workspace: workspace) }
                     }
                     RepositoryTabs(workspace: workspace)
