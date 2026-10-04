@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.4] - 2026-10-04
+
+### Changed
+
+- 差异行高更紧凑, 一屏显示更多行; 行距可在 `config.json` `appearance.diffLineSpacing` 调整, 即时生效
+
 ## [0.4.3] - 2026-10-04
 
 ### Changed

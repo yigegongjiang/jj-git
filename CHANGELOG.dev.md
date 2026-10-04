@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.4] - 2026-10-04
+
+### Changed
+
+- 差异行高更紧凑, 一屏显示更多行; 行距可在 `config.json` `appearance.diffLineSpacing` 调整, 即时生效
+  - `Typography.diffLineHeight` = 代码字体 ascender - descender + leading 取整 + `diffLineSpacing` (默认 2, 0–20); 取代 `editorFontSize × 1.75` 与换行模式固定 3pt 内边距
+  - 实测 12pt: 行距 17pt (原 21pt); 换行 / 不换行 / 带勾选行一致; 改配置热加载生效
+
 ## [0.4.3] - 2026-10-04
 
 ### Changed
