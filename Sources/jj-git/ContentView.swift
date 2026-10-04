@@ -46,10 +46,17 @@ struct ContentView: View {
             .background(Theme.titleBar)
             ThemedDivider()
             if !workspace.missingRepositories.isEmpty {
-                MissingRepositoriesBanner(workspace: workspace)
+                missingRepositoriesBanner
             }
             if let error = workspace.error {
-                ErrorBanner(message: error) { workspace.error = nil }
+                WarningBanner {
+                    ScrollView {
+                        Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    }.frame(maxHeight: 80)
+                } actions: {
+                    Button { workspace.error = nil } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("关闭错误提示").help("关闭错误提示")
+                }
             }
             if let session = workspace.selected {
                 RepositoryView(workspace: workspace, session: session).id(session.id)
@@ -68,5 +75,30 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var missingRepositoriesBanner: some View {
+        WarningBanner {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(workspace.missingRepositories.count) 个仓库路径不存在")
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(workspace.missingRepositories, id: \.self) { path in
+                            HStack {
+                                Text(path).textSelection(.enabled).lineLimit(1).truncationMode(.middle).help(path)
+                                Spacer(minLength: 8)
+                                Button("从列表移除") { workspace.removeMissingRepositories([path]) }
+                                    .help("移除仓库记录并关闭标签：\(path)")
+                                    .disabled(workspace.sessions[path]?.operation != nil)
+                            }
+                        }
+                    }
+                }.frame(height: CGFloat(min(workspace.missingRepositories.count, 4)) * 24)
+            }
+        } actions: {
+            Button("重新检查") { workspace.checkMissingRepositories() }.help("重新检查全部仓库路径")
+            Button("全部移除") { workspace.removeMissingRepositories(workspace.missingRepositories) }
+                .help("移除全部失效仓库记录并关闭标签")
+        }
     }
 }

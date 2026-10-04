@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.12] - 2026-10-04
+
+### Changed
+
+- 顶部提醒统一图标、间距与按钮布局，保留错误关闭和失效仓库批量清理
+  - `WarningBanner<Content, Actions>` 通过 `ViewBuilder` 组合内容与操作，统一所有提醒样式；移除 `ErrorBanner` / `MissingRepositoriesBanner`
+
 ## [0.4.11] - 2026-10-04
 
 ### Added

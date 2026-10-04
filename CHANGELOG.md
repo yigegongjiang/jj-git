@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.12] - 2026-10-04
+
+### Changed
+
+- 顶部提醒统一图标、间距与按钮布局，保留错误关闭和失效仓库批量清理
+
 ## [0.4.11] - 2026-10-04
 
 ### Added

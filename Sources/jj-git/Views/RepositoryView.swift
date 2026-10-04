@@ -16,15 +16,21 @@ struct RepositoryView: View {
             toolbar
             ThemedDivider()
             if let error = session.error {
-                ErrorBanner(message: error) { session.error = nil }
+                WarningBanner {
+                    ScrollView {
+                        Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    }.frame(maxHeight: 80)
+                } actions: {
+                    Button { session.error = nil } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("关闭错误提示").help("关闭错误提示")
+                }
             }
             if let operation = session.interruptedOperation {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
+                WarningBanner {
                     Text("\(operation)：请在终端完成或中止当前操作。")
-                    Spacer()
+                } actions: {
                     Button("打开终端") { workspace.openTerminal(session.location.root) }
-                }.font(.ui(-2)).padding(8).background(Theme.orange.opacity(0.12))
+                }
             }
             SplitPane(name: "repository.sidebar", initial: 170, minimum: (130, 480)) {
                 RepositorySidebar(workspace: workspace, session: session, dialog: $dialog)

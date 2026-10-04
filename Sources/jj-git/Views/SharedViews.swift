@@ -47,18 +47,19 @@ struct NamePrompt: View {
     }
 }
 
-struct ErrorBanner: View {
-    let message: String
-    let dismiss: () -> Void
+/// 提醒的公共视觉与布局；内容、操作与业务状态由调用方提供。
+struct WarningBanner<Content: View, Actions: View>: View {
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let actions: () -> Actions
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.orange)
-            ScrollView { Text(message).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
-                .frame(maxHeight: 80)
-            Button(action: dismiss) { Image(systemName: "xmark") }.buttonStyle(.plain).help("关闭错误提示")
+                .accessibilityHidden(true)
+            content().frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) { actions() }
         }
-        .font(.ui()).padding(8).background(Theme.orange.opacity(0.12))
+        .buttonStyle(.borderless).font(.ui()).padding(8).background(Theme.orange.opacity(0.12))
     }
 }
 
