@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.5] - 2026-10-04
+
+### Changed
+
+- 侧边栏工作树: 分支名移到目录名下一行, 淡色显示
+  - `RepositorySidebar` 工作树行: 图标 + `VStack` (目录名 / 分支 11pt `.tertiary`), `firstTextBaseline` 对齐图标与目录名
+
 ## [0.3.4] - 2026-10-04
 
 ### Changed

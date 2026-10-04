@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.5] - 2026-10-04
+
+### Changed
+
+- 侧边栏工作树: 分支名移到目录名下一行, 淡色显示
+
 ## [0.3.4] - 2026-10-04
 
 ### Changed
