@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.19] - 2026-10-04
+
+### Added
+
+- 新增 `⌘P` 最近仓库列表：按使用频率与时间排序，默认 15 条 (`tabs.recentCount` 可调)；输入筛选，↑↓ 选择，回车打开
+  - `SavedRepository.usage/usedAt` 指数衰减热度 (半衰期 3 天)，`Workspace.select` 切换时 +1；`recentRepositories` 排除当前 / 失效仓库，未使用的按标签 / 列表顺序补足；`RecentRepositoriesView` sheet
+
 ## [0.4.18] - 2026-10-04
 
 ### Added

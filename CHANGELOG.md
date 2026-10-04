@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.19] - 2026-10-04
+
+### Added
+
+- 新增 `⌘P` 最近仓库列表：按使用频率与时间排序，默认 15 条 (`tabs.recentCount` 可调)；输入筛选，↑↓ 选择，回车打开
+
 ## [0.4.18] - 2026-10-04
 
 ### Added
