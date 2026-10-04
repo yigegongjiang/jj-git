@@ -11,6 +11,16 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.3.1] - 2026-10-04
+
+### Changed
+
+- `state.json` 手写新增分组只需填写名称
+
+### Removed
+
+- 不再从旧版本导入仓库列表
+
 ## [0.3.0] - 2026-10-04
 
 ### Added

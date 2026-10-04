@@ -7,6 +7,18 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.3.1] - 2026-10-04
+
+### Changed
+
+- `state.json` 手写新增分组只需填写名称
+  - `RepositoryGroup.init(from:)`: `id` / `collapsed` 缺省时生成 / 取 false; `sidebarHidden` / `collapsed` 改非可选 `Bool`
+
+### Removed
+
+- 不再从旧版本导入仓库列表
+  - 删除 `Workspace.migrate` 与 `init(defaults:)`
+
 ## [0.3.0] - 2026-10-04
 
 ### Added
