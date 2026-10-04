@@ -17,6 +17,21 @@ struct DiffLine: Identifiable, Hashable, Sendable {
     var changed: Bool {
         kind == "+" || kind == "-"
     }
+
+    /// 超长行只显示前缀：单个 Text 过宽时渲染空白且布局卡顿；补丁仍使用完整 raw。
+    static let displayLimit = 1000
+
+    /// 制表符展开为 4 空格，保证显示宽度与 columns 估算一致。
+    var display: String {
+        let text = content.replacingOccurrences(of: "\t", with: "    ")
+        guard text.count > Self.displayLimit else { return text }
+        return text.prefix(Self.displayLimit) + " … +\(text.count - Self.displayLimit) 字符"
+    }
+
+    /// 等宽字体下的显示列数；U+1100 起按双宽计，宁宽勿窄。
+    var columns: Int {
+        display.unicodeScalars.reduce(0) { $0 + ($1.value < 0x1100 ? 1 : 2) }
+    }
 }
 
 struct DiffHunk: Identifiable, Sendable {
@@ -37,6 +52,8 @@ struct TextDiff: Sendable {
     var headers: [String] = []
     var hunks: [DiffHunk] = []
     var partialRestriction: String?
+    /// 全部行的最大显示列数；懒加载列表只测量已出现的行，内容宽度须预先确定。
+    private(set) var maxColumns = 0
     var binary: Bool {
         headers.contains { $0.hasPrefix("Binary files ") || $0 == "GIT binary patch" }
     }
@@ -74,6 +91,7 @@ struct TextDiff: Sendable {
                 partialRestriction = "文件类型发生变化，请按整个文件操作。"
             }
         }
+        maxColumns = hunks.lazy.flatMap(\.lines).map(\.columns).max() ?? 0
         if raw.contains("Subproject commit ") || raw.contains("mode 120000") {
             partialRestriction = "子模块与符号链接请按整个文件操作。"
         }

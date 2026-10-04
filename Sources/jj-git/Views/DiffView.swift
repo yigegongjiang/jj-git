@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct DiffView: View {
@@ -74,12 +75,13 @@ struct DiffView: View {
                 Text(restriction).font(.caption).foregroundStyle(.secondary).padding(6)
             }
             GeometryReader { geometry in
+                let width = max(DiffLineView.width(columns: diff.maxColumns), geometry.size.width)
                 ScrollView([.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(diff.hunks) { hunk in
                             HStack(spacing: 12) {
                                 Text(hunk.header).font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.secondary).lineLimit(1)
                                 Spacer(minLength: 16)
                                 if editable {
                                     if canDiscard {
@@ -89,14 +91,16 @@ struct DiffView: View {
                                     Button(session.selectedStaged ? "取消此块暂存" : "暂存此块") { apply(hunk.changeIDs) }
                                         .buttonStyle(.borderless).font(.system(size: 11)).disabled(!canEdit)
                                 }
-                            }.padding(.horizontal, 8).frame(height: 28).background(.blue.opacity(0.07))
+                            }.padding(.horizontal, 8).frame(width: geometry.size.width, height: 28)
+                                .frame(width: width, alignment: .leading).background(.blue.opacity(0.07))
                             ForEach(hunk.lines) { line in
                                 DiffLineView(line: line, selected: session.selectedLines.contains(line.id),
                                              selectable: canEdit && line.changed) { toggle(line, in: diff) }
+                                    .frame(width: width, alignment: .leading)
                             }
                         }
                     }
-                    .frame(minWidth: geometry.size.width, alignment: .leading)
+                    .frame(width: width, alignment: .leading)
                     .padding(.bottom, 12)
                 }
             }
@@ -129,6 +133,14 @@ private struct DiffLineView: View {
     let selectable: Bool
     let toggle: () -> Void
 
+    private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    private static let columnWidth = ("0" as NSString).size(withAttributes: [.font: font]).width
+
+    /// 勾选 24 + 行号 40×2 + 标记 25 + 末尾换行提示与留白 120。
+    static func width(columns: Int) -> CGFloat {
+        ceil(CGFloat(columns) * columnWidth) + 249
+    }
+
     private var tint: Color {
         if selected {
             return .accentColor.opacity(0.22)
@@ -158,13 +170,13 @@ private struct DiffLineView: View {
             Text(String(line.kind))
                 .foregroundStyle(line.kind == "+" ? Color.green : line.kind == "-" ? Color.red : Color.secondary)
                 .frame(width: 25)
-            Text(line.content.isEmpty ? " " : line.content)
+            Text(line.content.isEmpty ? " " : line.display).lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
             if line.noNewline {
                 Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary)
             }
-            Spacer(minLength: 12)
         }
-        .font(.system(size: 12, design: .monospaced)).frame(height: 21).background(tint)
+        .font(.system(size: 12, design: .monospaced))
+        .frame(maxWidth: .infinity, minHeight: 21, maxHeight: 21, alignment: .leading).background(tint)
     }
 }
