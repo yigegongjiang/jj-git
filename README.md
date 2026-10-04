@@ -23,8 +23,34 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 
 安装位置: `/Applications/jj-git.app`;
 
+<!-- prettier-ignore -->
+| 能力 | 入口 |
+| --- | --- |
+| 仓库 | 打开 ⌘O / 扫描导入 ⇧⌘O / 分组(折叠, 右键移动) / 多标签 ⌘W ⌘⌥←→ ⌃⇥ / 标签与选中项重启恢复 |
+| 历史 | 提交图 + 详情 + 文件差异 ⌘1; 右键: 复制 SHA / 新建分支 / 新建标签 |
+| 本地变更 | ⌘2; 双击或回车暂存/取消; 按块 / 按行(⇧点击连选) 暂存·取消·放弃; 加入 `.gitignore` |
+| 提交 | ⌘↩ 提交 / ⌘⌥↩ 提交并推送; Amend(+推送时 force-with-lease) |
+| 分支 / 标签 / 远程 | 侧栏 + 按钮(新建分支 ⌘B) 与右键菜单; 标签默认附注并推送 |
+| 同步 | Fetch ⇧⌘F / Pull(rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送 |
+| 工具 | 终端 ⇧⌘T(iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R |
+
 ## 架构
 
-- Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS
+- Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS 14+; 无第三方依赖
 - 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / ad-hoc 签名
-- macOS 14+; 无第三方依赖; Git 操作尚未实现
+- Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
+- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时 5 秒兜底轮询; 回到前台刷新
+- 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
+- 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
+- 持久化: `UserDefaults` 保存仓库列表 / 分组 / 标签页 / 外部编辑器
+
+## 结构
+
+<!-- prettier-ignore -->
+| 目录 | 职责 |
+| --- | --- |
+| `Sources/jj-git/Commands` | Git 进程执行 / 只读查询 / 写操作 |
+| `Sources/jj-git/Models` | 状态 / 引用 / 差异与补丁 / 提交图 / 仓库库模型 |
+| `Sources/jj-git/Native` | FSEvents 监听 / 登录 shell 环境 |
+| `Sources/jj-git/ViewModels` | `Workspace` (仓库库 + 标签) / `RepositorySession` (单仓库状态与操作) |
+| `Sources/jj-git/Views` | 主窗口各区域 / 弹窗 / 菜单快捷键 |

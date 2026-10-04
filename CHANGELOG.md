@@ -11,6 +11,16 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.0] - 2026-10-04
+
+### Added
+
+- 仓库管理: 打开 / 扫描目录批量导入 / 可折叠分组 / 多标签页, 重启后恢复
+- 提交历史: 提交图 + 提交详情 + 文件差异; 右键新建分支 / 标签
+- 本地变更: 按文件 / 文本块 / 行暂存、取消暂存与放弃; 加入 `.gitignore`; 提交、Amend 及一键推送
+- 分支 / 标签 / 远程管理, Fetch / Pull(rebase) / Push / 强制推送; Worktree 列表与切换
+- 文件变化 1 秒内自动刷新; 快捷键; 在 iTerm / 编辑器中打开
+
 ## [0.1.0] - 2026-10-04
 
 ### Added
