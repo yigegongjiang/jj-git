@@ -1,0 +1,9 @@
+
+sourcegit/
+build/
+JJGit.xcodeproj/
+jj-git-test-project
+AGENTS.override.md
+CLAUDE.local.md
+.DS_Store
+xcuserdata/
