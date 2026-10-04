@@ -9,6 +9,9 @@ struct LibraryView: View {
         VStack(spacing: 0) {
             WindowBar {
                 SidebarToggle(workspace: workspace)
+                if let tag = DebugInstance.tag {
+                    Text(tag).font(.ui(-2)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                }
                 Spacer()
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
                     .buttonStyle(.plain).help("新建分组")

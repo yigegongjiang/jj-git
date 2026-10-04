@@ -14,10 +14,16 @@
 # 调试
 
 ```bash
-./scripts/debug.sh [DEVELOPMENT_TEAM]                        # 构建 Debug + 退出旧进程 + 启动
+./scripts/debug.sh [DEVELOPMENT_TEAM]                        # 构建 Debug + 重启本 worktree 实例, 输出 pid=<PID>
+./scripts/debug.sh quit                                      # 退出本 worktree 实例
 ```
 
 验证 → 构建 + 启动；按需用 `osascript` 操作界面验证功能、核对结果；界面变更截图检查。
+
+- 多 worktree 并行: 各 worktree 实例并存 (同 bundle id, 按产物路径区分); 数据目录 `build/debug-config` (首次复制 `~/.config/jj-git-debug`); 窗口标题 + 侧栏顶部显示 worktree 目录名
+- `osascript` MUST 按 PID 定位: `tell application "System Events" to tell (first process whose unix id is <PID>)`, 键盘输入前 `set frontmost of (...) to true`; MUST NOT 用 `tell application "jj-git Debug"` / `application id` (多实例时目标不确定)
+- MUST NOT 绕过 `debug.sh` 自行复制 / 改 bundle id 启动
+- 删除 worktree 前 → `./scripts/debug.sh quit`
 
 # 发布
 

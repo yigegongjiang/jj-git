@@ -3,8 +3,17 @@ import Foundation
 /// `~/.config/jj-git` 下的 JSON 文件；Debug 构建使用独立目录，调试不影响日常数据。
 enum ConfigStore {
     #if DEBUG
-    static let directory = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".config/jj-git-debug", isDirectory: true)
+    /// `scripts/debug.sh` 为每个 worktree 传入独立目录，多实例并行调试互不覆盖；首次使用时复制共享调试目录作为初始数据。
+    static let directory: URL = {
+        let shared = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/jj-git-debug", isDirectory: true)
+        guard let path = ProcessInfo.processInfo.environment["JJGIT_CONFIG_DIR"], !path.isEmpty else { return shared }
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.copyItem(at: shared, to: url)
+        }
+        return url
+    }()
     #else
     static let directory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/jj-git", isDirectory: true)
