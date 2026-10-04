@@ -11,6 +11,13 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.22] - 2026-10-04
+
+### Changed
+
+- 「性能」面板改为显示启动以来本应用与 Git 命令的累计 CPU 时间，替代几乎总为 0 的 Git 瞬时占用
+- 「性能」面板改为居中弹窗 (Esc 关闭)，打开时内存读数不再被弹出动画抬高
+
 ## [0.4.21] - 2026-10-04
 
 ### Added

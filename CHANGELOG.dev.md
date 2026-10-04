@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.22] - 2026-10-04
+
+### Changed
+
+- 「性能」面板改为显示启动以来本应用与 Git 命令的累计 CPU 时间，替代几乎总为 0 的 Git 瞬时占用
+  - `PerformanceView` 直接展示 `ProcessSample.cpuSeconds` / `childCPUSeconds`；`cpuPercent` 去掉子进程分支
+- 「性能」面板改为居中弹窗 (Esc 关闭)，打开时内存读数不再被弹出动画抬高
+  - popover 弹出时 footprint 瞬时 +130 MB (约 1.5 秒，与内容无关)，sheet 无此现象；`ContentView` 改 `.sheet`
+
 ## [0.4.21] - 2026-10-04
 
 ### Added
