@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.1] - 2026-10-04
+
+### Changed
+
+- 跟随版本同步发布
+  - `scripts/debug.sh`: `open -n` 多实例并存, 按产物路径退出本 worktree 实例, 输出 PID; 新增 `quit`
+  - Debug: `JJGIT_CONFIG_DIR` (默认 `build/debug-config`, 首次复制 `~/.config/jj-git-debug`) + `JJGIT_DEBUG_TAG` (窗口标题 / 侧栏顶部)
+
 ## [0.4.0] - 2026-10-04
 
 ### Added
