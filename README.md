@@ -33,7 +33,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
 - 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
 - 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改即时生效
-- 外观: 固定 Dracula 深色主题; 界面 / 等宽字体与字号由 `config.json` `appearance` 设定
+- 外观: 固定 Dracula 深色主题; 界面 / 等宽字体与字号由 `config.json` `appearance` 设定; 差异行距 `appearance.diffLineSpacing` (自然行高外额外 pt, 默认 2, 0–20)
 - 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
 
 ## 架构
@@ -46,7 +46,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) JSON; FSEvents 监听目录热加载; 解析失败沿用上次内容且停写
-  - `config.json`: 设置 (字体 / 编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
+  - `config.json`: 设置 (字体 / 差异行距 / 编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔); 缺失键取默认, 越界收敛
   - `state.json`: 仓库列表 / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改同步开关标签
   - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅
 - MUST NOT 主动使用 `UserDefaults`: 窗口 / 分栏的 AppKit 自动保存已关闭, 改写 `state.json`

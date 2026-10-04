@@ -146,15 +146,12 @@ private struct DiffLineView: View {
         return ceil(CGFloat(columns) * ("0" as NSString).size(withAttributes: [.font: font]).width) + 329
     }
 
-    private var height: CGFloat {
-        (Typography.shared.editorFontSize * 1.75).rounded()
-    }
-
     private var tint: Color {
         line.kind == "+" ? Theme.added : line.kind == "-" ? Theme.deleted : .clear
     }
 
     var body: some View {
+        let typography = Typography.shared
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             if selectable {
                 Button(action: toggle) {
@@ -180,8 +177,10 @@ private struct DiffLineView: View {
                 Text("  ⏎ 无末尾换行").foregroundStyle(.tertiary).fixedSize()
             }
         }
-        .font(.code()).padding(.vertical, wrap ? 3 : 0)
-        .frame(maxWidth: .infinity, minHeight: height, maxHeight: wrap ? nil : height, alignment: .leading)
+        // 换行时多行内容按自然行高展开，上下各补一半间距；单行与不换行时行高一致。
+        .font(.code()).padding(.vertical, wrap ? typography.diffLineSpacing / 2 : 0)
+        .frame(maxWidth: .infinity, minHeight: typography.diffLineHeight,
+               maxHeight: wrap ? nil : typography.diffLineHeight, alignment: .leading)
         .background(tint)
         // 增删行底色与强调色相同，选中改用提亮覆盖层区分。
         .overlay(selected ? Theme.foreground.opacity(0.25) : .clear)

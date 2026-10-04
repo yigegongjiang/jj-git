@@ -42,6 +42,16 @@ final class Typography {
         CGFloat(appearance.editorFontSize)
     }
 
+    var diffLineSpacing: CGFloat {
+        CGFloat(appearance.diffLineSpacing)
+    }
+
+    /// 差异行高 = 代码字体自然行高 + `diffLineSpacing`；间距下限 0，不会裁切文字。
+    var diffLineHeight: CGFloat {
+        let font = font(mono: true, size: editorFontSize, weight: .regular)
+        return ceil(font.ascender - font.descender + font.leading) + diffLineSpacing
+    }
+
     /// 返回未安装字体的说明，供错误横幅提示。
     func apply(_ value: AppConfig.Appearance) -> String? {
         if value != appearance {

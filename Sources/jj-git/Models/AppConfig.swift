@@ -52,6 +52,8 @@ struct AppConfig: Codable, Equatable, Sendable {
         var fontSize = 12
         /// 差异 / 提交信息等代码文本字号。
         var editorFontSize = 12
+        /// 差异每行在字体自然行高之外的额外间距（pt），越小一屏显示行数越多。
+        var diffLineSpacing = 2
     }
 
     var appearance = Appearance()
@@ -70,6 +72,7 @@ struct AppConfig: Codable, Equatable, Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         value.appearance.fontSize = appearance.fontSize.clamped(9...20)
         value.appearance.editorFontSize = appearance.editorFontSize.clamped(9...20)
+        value.appearance.diffLineSpacing = appearance.diffLineSpacing.clamped(0...20)
         value.editor.path = editor.path.trimmingCharacters(in: .whitespacesAndNewlines)
         value.editor.bundleID = editor.bundleID.trimmingCharacters(in: .whitespacesAndNewlines)
         value.terminal.bundleIDs = terminal.bundleIDs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
