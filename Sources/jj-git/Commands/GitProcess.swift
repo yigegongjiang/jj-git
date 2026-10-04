@@ -45,10 +45,16 @@ enum GitProcess {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
+                    let start = Date()
+                    let begin = DispatchTime.now().uptimeNanoseconds
+                    let result = Result {
+                        try execution.run(at: directory, arguments: arguments, input: input, timeout: timeout)
+                    }
+                    GitCommandLog.record(at: directory, arguments: arguments, start: start,
+                                         milliseconds: Int((DispatchTime.now().uptimeNanoseconds - begin) / 1_000_000),
+                                         result: result)
                     do {
-                        let output = try execution.run(
-                            at: directory, arguments: arguments, input: input, timeout: timeout
-                        )
+                        let output = try result.get()
                         guard accepted.contains(output.status) else {
                             let detail = output.error.isEmpty ? output.text : output.error
                             throw GitFailure(message: detail.trimmingCharacters(in: .whitespacesAndNewlines))

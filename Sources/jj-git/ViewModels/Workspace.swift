@@ -1,5 +1,4 @@
 import AppKit
-import Foundation
 import Observation
 
 @MainActor @Observable
@@ -28,7 +27,7 @@ final class Workspace {
         library = RepositoryLibrary()
         config = AppConfig()
         do {
-            try FileManager.default.createDirectory(at: ConfigStore.directory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: GitCommandLog.directory, withIntermediateDirectories: true)
             let defaultConfig = try ConfigStore.encode(AppConfig())
             if (try? ConfigStore.read(ConfigStore.defaultsURL)) != defaultConfig {
                 try ConfigStore.write(defaultConfig, to: ConfigStore.defaultsURL)
@@ -39,7 +38,8 @@ final class Workspace {
         } catch { self.error = "\(ConfigStore.directory.path)\n\(error.localizedDescription)" }
         reloadConfig()
         reloadState(restoring: false)
-        configMonitor = RepositoryMonitor(paths: [ConfigStore.directory.path]) { [weak self] in
+        configMonitor = RepositoryMonitor(paths: [ConfigStore.directory.path],
+                                          ignoring: GitCommandLog.directory) { [weak self] in
             Task { @MainActor [weak self] in
                 self?.reloadConfig()
                 self?.reloadState(restoring: true)

@@ -56,6 +56,13 @@ struct AppConfig: Codable, Equatable, Sendable {
         var diffLineSpacing = 2
     }
 
+    struct CommandLog: Codable, Equatable, Sendable {
+        /// 每个仓库一份 `logs/*.log`，记录 Git 命令与耗时。
+        var enabled = true
+        /// 超出后轮转为 `.log.1`，只保留一份旧文件。
+        var maxFileMiB = 5
+    }
+
     var appearance = Appearance()
     var editor = Editor()
     var terminal = Terminal()
@@ -64,6 +71,7 @@ struct AppConfig: Codable, Equatable, Sendable {
     var history = History()
     var diff = Diff()
     var refresh = Refresh()
+    var commandLog = CommandLog()
 
     func normalized() -> AppConfig {
         var value = self
@@ -86,6 +94,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.history.pageSize = history.pageSize.clamped(50...100_000)
         value.diff.contextLines = diff.contextLines.clamped(1...20)
         value.refresh.pollSeconds = refresh.pollSeconds.clamped(1...600)
+        value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)
         return value
     }
 
