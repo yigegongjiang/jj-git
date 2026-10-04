@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var workspace: Workspace
+    @State private var showingPerformance = false
 
     var body: some View {
         Group {
@@ -52,6 +53,12 @@ struct ContentView: View {
                     .buttonStyle(.borderless).padding(.horizontal, 8)
                     .help("重新读取配置；有未提交的提交信息或任务进行中时不可重启")
                     .disabled(!workspace.canRestart)
+                Button("性能", systemImage: "gauge.with.dots.needle.33percent") { showingPerformance.toggle() }
+                    .buttonStyle(.borderless).padding(.horizontal, 8)
+                    .help("查看 CPU / 内存与各标签内存占用")
+                    .popover(isPresented: $showingPerformance, arrowEdge: .bottom) {
+                        PerformanceView(workspace: workspace)
+                    }
             }
             .background(Theme.titleBar)
             ThemedDivider()

@@ -34,6 +34,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
 - 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
 - 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改后点击顶部「重启应用」生效
+- 性能: 顶部「性能」(「重启应用」右侧) 打开时测量一次 (CPU 取 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / Git 子进程 CPU + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)
 - Git 命令记录: `~/.config/jj-git/logs/` 每仓库一个文件, 含耗时; `sort -t$'\t' -k2 -n <file>` 找慢命令
 - 外观: 固定 Dracula 深色主题; 界面 / 等宽字体与字号由 `config.json` `appearance` 设定; 差异行距 `appearance.diffLineSpacing` (自然行高外额外 pt, 默认 2, 0–20)
 - 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
