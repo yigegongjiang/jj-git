@@ -12,7 +12,7 @@
 ### Fixed
 
 - 「文稿」访问权限不再在每次升级后重新询问 (允许一次即可)
-  - ad-hoc → Apple Development 签名; 脚本必填 `<DEVELOPMENT_TEAM>`
+  - ad-hoc → Apple Development 签名; 脚本可选参数 `[DEVELOPMENT_TEAM]`
 
 ## [0.2.3] - 2026-10-04
 

@@ -14,7 +14,7 @@
 # 调试
 
 ```bash
-./scripts/debug.sh <DEVELOPMENT_TEAM>                        # 构建 Debug + 退出旧进程 + 启动
+./scripts/debug.sh [DEVELOPMENT_TEAM]                        # 构建 Debug + 退出旧进程 + 启动
 ```
 
 验证 → 构建 + 启动；按需用 `osascript` 操作界面验证功能、核对结果；界面变更截图检查。
@@ -27,7 +27,7 @@
 
 1. 验证: `swiftformat --lint` + `swiftlint`
 2. 写版本: `version.xcconfig` + `CHANGELOG.md` + `CHANGELOG.dev.md` 同步编辑 (与 tag 一致)
-3. 预部署: `./scripts/install-local.sh <DEVELOPMENT_TEAM>`
+3. 预部署: `./scripts/install-local.sh [DEVELOPMENT_TEAM]`
 4. 发布: commit + annotated tag (`-a -m`) + push branch + tag (有 remote 时)
 
 ## 1. 验证
@@ -45,7 +45,7 @@ swiftlint --strict
 
 ## 3. 预部署
 
-信赖并执行 `./scripts/install-local.sh <DEVELOPMENT_TEAM>` 脚本（能力完全交由它封装、提供、执行）
+信赖并执行 `./scripts/install-local.sh [DEVELOPMENT_TEAM]` 脚本（能力完全交由它封装、提供、执行）
 
 ## 4. 发布
 

@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-team="${1:?用法: $0 <DEVELOPMENT_TEAM>}"
-
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 built_app="$project_dir/build/Build/Products/Release/jj-git.app"
 installed_app="/Applications/jj-git.app"
@@ -10,7 +8,7 @@ installed_app="/Applications/jj-git.app"
 cd "$project_dir"
 xcodebuild -project jj-git.xcodeproj -scheme jj-git \
   -configuration Release -derivedDataPath build -destination 'platform=macOS' \
-  CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM="$team" \
+  ${1:+CODE_SIGN_STYLE=Automatic} ${1:+"CODE_SIGN_IDENTITY=Apple Development"} ${1:+"DEVELOPMENT_TEAM=$1"} \
   build
 
 # 构建 / 产物检查失败时保留旧版。
