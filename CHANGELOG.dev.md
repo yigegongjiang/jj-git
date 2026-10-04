@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.2.2] - 2026-10-04
+
+### Fixed
+
+- 应用图标在 Dock / 访达中出现白边与颜色偏淡, 现与设计一致 (正式版与 Debug 版)
+  - 原因: 非缓存; `AppIcon` PNG 自带圆角 + 10% 透明边, macOS 27 二次处理出现振铃 / 偏色; 改为满版不透明方图, 圆角与阴影由系统生成
+
 ## [0.2.1] - 2026-10-04
 
 ### Changed

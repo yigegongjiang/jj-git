@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.2.2] - 2026-10-04
+
+### Fixed
+
+- 应用图标在 Dock / 访达中出现白边与颜色偏淡, 现与设计一致 (正式版与 Debug 版)
+
 ## [0.2.1] - 2026-10-04
 
 ### Changed
