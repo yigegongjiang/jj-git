@@ -311,6 +311,7 @@ struct RepositoryTabs: View {
                                     : mounted ? "" : "未挂载")
                                 .accessibilityAddTraits(workspace.library.selectedPath == path ? .isSelected : [])
                                 .accessibilityHint(path)
+                                .accessibilityMenuActions(tabActions(path).flatMap(\.self))
                             Button { workspace.close(path) } label: {
                                 Image(systemName: "xmark").font(.ui(-3))
                             }
@@ -325,6 +326,7 @@ struct RepositoryTabs: View {
                             }
                         }
                         .help(mounted ? path : "未挂载，点击重新加载\n\(path)")
+                        .contextMenu { MenuActionGroups(groups: tabActions(path)) }
                         ThemedDivider().frame(height: 18)
                     }
                 }
@@ -332,5 +334,23 @@ struct RepositoryTabs: View {
                 .frame(minWidth: proxy.size.width, alignment: .leading).windowDragArea()
             }.scrollIndicators(.hidden)
         }.frame(height: 32)
+    }
+
+    private func tabActions(_ path: String) -> [[MenuAction]] {
+        let tabs = workspace.library.tabs
+        let index = tabs.firstIndex(of: path) ?? 0
+        let left = Array(tabs[..<index]), right = Array(tabs[(index + 1)...])
+        return [
+            [MenuAction(title: "关闭标签", enabled: workspace.sessions[path]?.operation == nil) {
+                workspace.close(path)
+            }],
+            [
+                MenuAction(title: "关闭其他标签", enabled: tabs.count > 1) {
+                    workspace.close(left + right, keeping: path)
+                },
+                MenuAction(title: "关闭左侧标签", enabled: !left.isEmpty) { workspace.close(left, keeping: path) },
+                MenuAction(title: "关闭右侧标签", enabled: !right.isEmpty) { workspace.close(right, keeping: path) }
+            ]
+        ]
     }
 }

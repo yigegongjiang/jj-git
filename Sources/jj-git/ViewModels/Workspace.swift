@@ -123,6 +123,17 @@ final class Workspace {
         save()
     }
 
+    /// 批量关闭；当前标签在其中时先切到 `anchor`，避免逐个关闭时依次激活相邻标签。
+    func close(_ paths: [String], keeping anchor: String) {
+        let closable = paths.filter { $0 != anchor && sessions[$0]?.operation == nil }
+        if let selected = library.selectedPath, closable.contains(selected) {
+            select(anchor)
+        }
+        for path in closable {
+            close(path)
+        }
+    }
+
     func remove(_ path: String) {
         guard sessions[path]?.operation == nil else { return }
         close(path)
