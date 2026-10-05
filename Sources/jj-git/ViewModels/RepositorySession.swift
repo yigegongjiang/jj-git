@@ -54,6 +54,8 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored var diffGeneration = 0
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var refreshFailure: String?
+    /// 打开 / 切换到仓库后首次刷新：无本地变更则显示提交历史；手动切换分区即取消。
+    @ObservationIgnored private var sectionAutoPending = false
 
     init(location: RepositoryLocation) {
         self.location = location
@@ -71,6 +73,7 @@ final class RepositorySession: Identifiable {
     func activate() {
         guard !active else { return }
         active = true
+        sectionAutoPending = true
         monitor = RepositoryMonitor(location: location) { [weak self] in
             Task { @MainActor [weak self] in self?.filesystemChanged() }
         }
@@ -178,6 +181,12 @@ final class RepositorySession: Identifiable {
             }
         }
         lastRefreshed = Date()
+        if sectionAutoPending {
+            sectionAutoPending = false
+            if section == .changes, status.changes.isEmpty, !graph.isEmpty {
+                changeSection(.history)
+            }
+        }
         if section == .changes {
             if changed {
                 selectedLines = []
@@ -189,6 +198,7 @@ final class RepositorySession: Identifiable {
 
 extension RepositorySession {
     func changeSection(_ section: RepositorySection) {
+        sectionAutoPending = false
         self.section = section
         fileDiffs = []
         diff = nil
