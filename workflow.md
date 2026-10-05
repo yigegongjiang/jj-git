@@ -63,5 +63,5 @@ git diff --cached                                   # 确认暂存内容恰好�
 git commit -m "chore(release): vX.Y.Z"
 git tag -a vX.Y.Z -m "vX.Y.Z"
 git push origin "$(git branch --show-current)"       # 仅当 `git remote` 非空
-git push origin vX.Y.Z                               # 同上; 先 branch 后 tag; tag push 触发 `.github/workflows/release.yml` 发布 GitHub Release, 无需等待
+git push origin vX.Y.Z                               # 同上
 ```
