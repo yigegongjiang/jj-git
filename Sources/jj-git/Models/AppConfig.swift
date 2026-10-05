@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-/// `config.json` 的内容：缺失的键取默认值，越界数值收敛到可用范围。
+/// `config.jsonc` 的内容：缺失的键取默认值，越界数值收敛到可用范围。
 struct AppConfig: Codable, Equatable, Sendable {
     struct Editor: Codable, Equatable, Sendable {
         /// 外部编辑器 .app 路径；为空或不存在时按 `bundleID` 查找。

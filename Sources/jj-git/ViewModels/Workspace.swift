@@ -50,7 +50,7 @@ final class Workspace {
         config = AppConfig()
         do {
             try FileManager.default.createDirectory(at: GitCommandLog.directory, withIntermediateDirectories: true)
-            let defaultConfig = try ConfigStore.encode(AppConfig())
+            let defaultConfig = try ConfigStore.encodeConfig(AppConfig())
             if (try? ConfigStore.read(ConfigStore.defaultsURL)) != defaultConfig {
                 try ConfigStore.write(defaultConfig, to: ConfigStore.defaultsURL)
             }
@@ -257,9 +257,9 @@ final class Workspace {
                 guard let self else { return }
                 do {
                     let data = try ConfigStore.read(ConfigStore.configURL)
-                    var saved = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) } ?? AppConfig()
+                    var saved = try ConfigStore.readConfig(data)
                     saved.editor.path = url.path
-                    try ConfigStore.write(ConfigStore.encode(saved), to: ConfigStore.configURL)
+                    try ConfigStore.saveConfig(saved, original: data)
                 } catch { self.error = error.localizedDescription }
                 if let path {
                     launch(path, with: url)
@@ -285,7 +285,7 @@ extension Workspace {
     func openConfig() {
         do {
             if !FileManager.default.fileExists(atPath: ConfigStore.configURL.path) {
-                try ConfigStore.write(ConfigStore.encode(config), to: ConfigStore.configURL)
+                try ConfigStore.write(ConfigStore.encodeConfig(config), to: ConfigStore.configURL)
             }
             openEditor(ConfigStore.configURL.path)
         } catch { self.error = error.localizedDescription }
@@ -331,7 +331,9 @@ extension Workspace {
     private func loadConfig() {
         do {
             let data = try ConfigStore.read(ConfigStore.configURL)
-            config = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) }?.normalized() ?? AppConfig()
+            config = try data.map {
+                try ConfigStore.decode($0, defaults: AppConfig(), comments: true)
+            }?.normalized() ?? AppConfig()
         } catch { self.error = "\(ConfigStore.configURL.path)：\n\(error.localizedDescription)" }
         AppConfig.current = config
         if let warning = Typography.shared.apply(config.appearance) {
@@ -374,9 +376,9 @@ extension Workspace {
     func setHistoryColumn(_ keyPath: WritableKeyPath<AppConfig.History, Bool>, visible: Bool) {
         do {
             let data = try ConfigStore.read(ConfigStore.configURL)
-            var saved = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) } ?? AppConfig()
+            var saved = try ConfigStore.readConfig(data)
             saved.history[keyPath: keyPath] = visible
-            try ConfigStore.write(ConfigStore.encode(saved), to: ConfigStore.configURL)
+            try ConfigStore.saveConfig(saved, original: data)
             config.history[keyPath: keyPath] = visible
             AppConfig.current = config
         } catch { self.error = "\(ConfigStore.configURL.path)：\n\(error.localizedDescription)" }

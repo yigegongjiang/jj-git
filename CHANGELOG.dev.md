@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.29] - 2026-10-05
+
+### Changed
+
+- 配置支持注释，全部配置项附中文说明、单位和范围；界面保存设置保留自定义注释
+  - `config.jsonc` / `config.default.jsonc`；去除注释后 Foundation JSON 解码（支持尾逗号），按 token 定位变更值，保留注释 / 未知键，状态仍为 JSON
+
 ## [0.4.28] - 2026-10-05
 
 ### Added

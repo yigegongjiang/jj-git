@@ -38,7 +38,7 @@ private extension Color {
     }
 }
 
-/// 启动时读取 config.json `appearance`，缓存字体。
+/// 启动时读取 config.jsonc `appearance`，缓存字体。
 @MainActor
 final class Typography {
     static let shared = Typography()

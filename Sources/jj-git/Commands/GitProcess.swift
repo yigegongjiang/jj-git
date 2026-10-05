@@ -37,7 +37,7 @@ enum GitProcess {
         let config = AppConfig.current.git
         let executable = config.executable.isEmpty ? detected : config.executable
         guard FileManager.default.isExecutableFile(atPath: executable) else {
-            throw GitFailure(message: "config.json git.executable 不可执行：\(executable)")
+            throw GitFailure(message: "config.jsonc git.executable 不可执行：\(executable)")
         }
         let timeout = timeout ?? TimeInterval(config.timeoutSeconds)
         let execution = GitExecution(executable: executable, outputLimit: config.outputLimitMiB * 1024 * 1024)

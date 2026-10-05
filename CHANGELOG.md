@@ -9,6 +9,12 @@
 
 # Changelog
 
+## [0.4.29] - 2026-10-05
+
+### Changed
+
+- 配置支持注释，全部配置项附中文说明、单位和范围；界面保存设置保留自定义注释
+
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
 ## [0.4.28] - 2026-10-05
