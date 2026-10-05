@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.33] - 2026-10-05
+
+### Added
+
+- 仓库侧栏支持 7 种颜色标记，点击文件夹图标或右键设置，重启后保留；可恢复默认颜色
+  - `SavedRepository.color` 写入 `state.json`；`LibraryView` 复用颜色菜单，`Workspace+Library.swift` 保存列表操作，缺失 / 未知颜色使用默认
+
 ## [0.4.32] - 2026-10-05
 
 ### Added
