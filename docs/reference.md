@@ -22,6 +22,7 @@
 - 提交: ⌘↩ 提交 / ⌘⌥↩ 提交并推送; Amend (推送时 force-with-lease)
 - 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送; 分区标题点击折叠 (默认展开, 记忆)
 - 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
+- CLI: App 菜单「安装命令行工具…」创建 `~/.local/bin/jj-git` -> 当前 App `Contents/Resources/jj-git-cli`; `jj-git [path]` (默认当前目录), 复用运行实例; shell PATH 需包含 `~/.local/bin`; App 移动后重新安装
 - 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
 - 配置: ⌘, 打开 `~/.config/jj-git/config.jsonc`; 外部修改后点击顶部「重启应用」生效
 - 性能: 顶部「性能」(「重启应用」右侧) 弹窗, 打开时测量一次 (口径不含面板自身: 内存取弹窗前采样, CPU 取弹窗动画结束后 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / 本进程与 Git 累计 CPU 时间 + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)

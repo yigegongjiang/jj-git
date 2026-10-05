@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.36] - 2026-10-05
+
+### Added
+
+- App 菜单支持安装 `jj-git` 命令，终端执行 `jj-git [path]` 打开仓库；默认当前目录，复用已运行的应用
+  - `CLIIntegration` 顺序处理打开事件；`~/.local/bin/jj-git` 链接到 App 内启动脚本，恢复标签仅执行一次
+
 ## [0.4.35] - 2026-10-05
 
 ### Added

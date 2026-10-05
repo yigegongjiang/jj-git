@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() { printf 'Usage: jj-git [path]\nOpen a repository in jj-git (default: current directory).\n'; }
+if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then
+  usage
+  exit 0
+fi
+if [ "${1:-}" = -- ]; then shift; fi
+if [ "$#" -gt 1 ]; then
+  usage >&2
+  exit 2
+fi
+path="${1:-$PWD}"
+if [ ! -d "$path" ]; then
+  printf 'jj-git: directory not found: %s\n' "$path" >&2
+  exit 1
+fi
+path="$(cd -- "$path" && pwd -P)"
+
+# 从安装链接定位所属 App，随 App 更新使用同路径的新版本。
+executable="${BASH_SOURCE[0]}"
+while [ -L "$executable" ]; do
+  directory="$(cd -P -- "$(dirname -- "$executable")" && pwd)"
+  target="$(/usr/bin/readlink "$executable")"
+  case "$target" in
+    /*) executable="$target" ;;
+    *) executable="$directory/$target" ;;
+  esac
+done
+app="$(cd -P -- "$(dirname -- "$executable")/../.." && pwd)"
+exec /usr/bin/open -a "$app" "$path"

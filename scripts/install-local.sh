@@ -13,6 +13,7 @@ xcodebuild -project jj-git.xcodeproj -scheme jj-git \
 
 # 构建 / 产物检查失败时保留旧版。
 test -x "$built_app/Contents/MacOS/jj-git"
+test -x "$built_app/Contents/Resources/jj-git-cli"
 codesign --verify --strict "$built_app"
 
 quit_app() {

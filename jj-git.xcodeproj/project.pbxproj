@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C11000000000000000000001 /* CLIIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C11000000000000000000002; };
 		AA1000000000000000000001 /* SidebarDragDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000000000000000000002; };
 		C01000000000000000000001 /* Workspace+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01000000000000000000002; };
 		C8D000000000000000000001 /* SheetBackgroundDismiss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D000000000000000000002; };
@@ -46,6 +47,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C11000000000000000000002 /* CLIIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIIntegration.swift; sourceTree = "<group>"; };
 		AA1000000000000000000002 /* SidebarDragDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarDragDrop.swift; sourceTree = "<group>"; };
 		C01000000000000000000002 /* Workspace+Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workspace+Library.swift"; sourceTree = "<group>"; };
 		C8D000000000000000000002 /* SheetBackgroundDismiss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetBackgroundDismiss.swift; sourceTree = "<group>"; };
@@ -111,7 +113,7 @@
 		};
 		9BF57C01AC8B42D31A8065C6 /* Commands */ = {isa = PBXGroup; children = (4C8D2F1E6A9B3C5D7E0F1A2B /* GitCommandLog.swift */, 6FCE58329C69875AAE8EACB7 /* GitProcess.swift */, AEE43E248A071C14E28E4A90 /* RepositoryAction.swift */, 293B110111C33FA69C808F8D /* RepositoryQuery.swift */); path = Commands; sourceTree = "<group>"; };
 		C6A2D6A93166D65F6B4EA511 /* Models */ = {isa = PBXGroup; children = (17D95CECC2740F25F91795BB /* CommitGraph.swift */, 06DF6F11D2AE51F2F0D51AC1 /* Repository.swift */, 941D6B3CF7973C0AF0269569 /* RepositoryLibrary.swift */, A1C0F16E0000000000000002 /* AppConfig.swift */, 5357A785B990F1A658FB3269 /* TextDiff.swift */); path = Models; sourceTree = "<group>"; };
-		0C1AF0384CD8A446FDD75366 /* Native */ = {isa = PBXGroup; children = (B7E000000000000000000002 /* ProcessMetrics.swift */, DC519E44ED541591CDAF4193 /* RepositoryMonitor.swift */, 078A4D92F0336100A0040956 /* ShellEnvironment.swift */, A1C0F16E0000000000000004 /* ConfigStore.swift */); path = Native; sourceTree = "<group>"; };
+		0C1AF0384CD8A446FDD75366 /* Native */ = {isa = PBXGroup; children = (C11000000000000000000002 /* CLIIntegration.swift */, B7E000000000000000000002 /* ProcessMetrics.swift */, DC519E44ED541591CDAF4193 /* RepositoryMonitor.swift */, 078A4D92F0336100A0040956 /* ShellEnvironment.swift */, A1C0F16E0000000000000004 /* ConfigStore.swift */); path = Native; sourceTree = "<group>"; };
 		788A8A120315C723A69F373C /* ViewModels */ = {isa = PBXGroup; children = (C01000000000000000000002 /* Workspace+Library.swift */, B7E000000000000000000004 /* RepositorySession+Memory.swift */, EA0000000000000000000002 /* Workspace+Opening.swift */, B04B823F5ABD1F95A2EBC8FE /* RepositorySession.swift */, D1FF00000000000000000002 /* RepositorySession+Diff.swift */, 6AF46400894B652436490FF4 /* Workspace.swift */); path = ViewModels; sourceTree = "<group>"; };
 		6855256899307EF1338B85BB /* Views */ = {isa = PBXGroup; children = (AA1000000000000000000002 /* SidebarDragDrop.swift */, C8D000000000000000000002 /* SheetBackgroundDismiss.swift */, B7E000000000000000000006 /* PerformanceView.swift */, D3DB531FA22160379EBAA8D7 /* ActionDialog.swift */, 91B32267AFCBE10569D8D854 /* ChangesView.swift */, D1FF7AB1E0000000000000A4 /* DiffTableCells.swift */, D1FF7AB1E0000000000000A2 /* DiffTableView.swift */, 09723C7E686BC460E19F3A2B /* DiffView.swift */, 3CB68DDEB147184592603B15 /* HistoryView.swift */, 5725393DAB83625D89F5D234 /* LibraryView.swift */, A979CF2BA9C064100180E2C2 /* RepositoryView.swift */, D0A6C207AB97BB86668E094C /* SharedViews.swift */, A1C0F16E0000000000000006 /* Theme.swift */, 78D94C318ED78C13A2DE219F /* WorkspaceCommands.swift */, A5C000000000000000000002 /* KeyboardShortcutsView.swift */); path = Views; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -120,7 +122,7 @@
 		A00000000000000000000041 /* jj-git */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A00000000000000000000062;
-			buildPhases = (A00000000000000000000051, A00000000000000000000021, A00000000000000000000052);
+			buildPhases = (A00000000000000000000051, A00000000000000000000021, A00000000000000000000052, C11000000000000000000003);
 			buildRules = ();
 			dependencies = ();
 			name = "jj-git";
@@ -150,6 +152,20 @@
 /* Begin PBXResourcesBuildPhase section */
 		A00000000000000000000052 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000003 /* Assets.xcassets in Resources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+        C11000000000000000000003 /* Embed CLI */ = {
+            isa = PBXShellScriptBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            inputPaths = ("$(SRCROOT)/scripts/jj-git-cli");
+            outputPaths = ("$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/jj-git-cli");
+            name = "Embed CLI";
+            runOnlyForDeploymentPostprocessing = 0;
+            shellPath = /bin/sh;
+            shellScript = "install -m 755 \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
+        };
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A00000000000000000000051 = {

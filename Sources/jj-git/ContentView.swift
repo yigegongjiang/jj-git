@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var workspace: Workspace
+    let openHandler: RepositoryOpenHandler
     @State private var showingPerformance = false
     @State private var performanceBaseline: ProcessSample?
 
@@ -26,10 +27,7 @@ struct ContentView: View {
             KeyboardShortcutsView().themed().dismissOnBackgroundClick()
         }
         .task {
-            await workspace.restore()
-            for path in ProcessInfo.processInfo.arguments.dropFirst() where path.hasPrefix("/") {
-                await workspace.open(path)
-            }
+            openHandler.connect(workspace)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             workspace.selected?.refresh()

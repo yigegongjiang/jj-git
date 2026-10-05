@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct JJGitApp: App {
+    @NSApplicationDelegateAdaptor(RepositoryOpenHandler.self) private var openHandler
     @State private var workspace = Workspace()
 
     init() {
@@ -12,7 +13,7 @@ struct JJGitApp: App {
 
     var body: some Scene {
         Window(windowTitle, id: "main") {
-            ContentView(workspace: workspace)
+            ContentView(workspace: workspace, openHandler: openHandler)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1360, height: 840)
