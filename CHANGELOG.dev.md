@@ -7,6 +7,17 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.45] - 2026-10-05
+
+### Added
+
+- 全部差异显示时，文件行尾出现定位按钮，点击滚动到该文件的差异
+  - `RevealButton` (`location` 图标) -> `revealChange` / `revealCommitFile` 写 `diffReveal`; `DiffTableCoordinator` 内容集合变化或新请求时滚动到文件头, 其他导航清除请求
+- 文件右键新增「在文件夹中显示」，默认 Finder，可在配置中改用其他文件管理器（如 QSpace Pro）
+  - `fileManager.bundleID`: Finder 用 `activateFileViewerSelecting`, 其他 App 打开文件路径; 文件已删除退到最近存在的上级目录; 配置说明支持 `分组.键`
+- 提交历史的变更文件支持右键：在编辑器打开 / 在文件夹中显示 / 复制路径
+  - `contextMenu(forSelectionType:)`; 删除状态文件禁用编辑器打开
+
 ## [0.4.44] - 2026-10-05
 
 ### Fixed
