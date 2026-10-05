@@ -166,12 +166,13 @@ struct ChangeList: View {
                 })
             }
         }
-        guard targets.count == 1, let file = targets.first else { return [actions] }
+        let copies = MenuAction.copyPaths(targets.map(\.path), root: session.location.root)
+        guard targets.count == 1, let file = targets.first else { return [actions, copies] }
         let path = session.location.root + "/" + file.path
         return [actions, [
             MenuAction(title: "在编辑器打开") { workspace.openEditor(path) },
             MenuAction(title: "在文件夹中显示") { workspace.revealInFileManager(path) }
-        ]]
+        ] + copies]
     }
 
     private func reveal(_ file: FileChange) {

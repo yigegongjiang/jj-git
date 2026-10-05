@@ -69,9 +69,8 @@ struct HistoryView: View {
         let path = session.location.root + "/" + file.path
         return [
             MenuAction(title: "在编辑器打开", enabled: !file.status.hasPrefix("D")) { workspace?.openEditor(path) },
-            MenuAction(title: "在文件夹中显示") { workspace?.revealInFileManager(path) },
-            MenuAction(title: "复制路径") { copy(file.path) }
-        ]
+            MenuAction(title: "在文件夹中显示") { workspace?.revealInFileManager(path) }
+        ] + MenuAction.copyPaths([file.path], root: session.location.root)
     }
 }
 
@@ -114,7 +113,7 @@ private struct CommitGraphPanel: View {
                             .accessibilityRow(commitLabel(row.commit)) { selection = row.id }
                             .accessibilityIdentifier("history.commit")
                             .menuActions([[
-                                MenuAction(title: "复制 SHA") { copy(row.commit.hash) },
+                                MenuAction(title: "复制 SHA") { copyToPasteboard(row.commit.hash) },
                                 MenuAction(title: "从此提交新建分支…") { dialog = .branch(start: row.commit.hash) },
                                 MenuAction(title: "在此提交新建标签…") { dialog = .tag(target: row.commit.hash) }
                             ]])
@@ -323,9 +322,4 @@ private struct GraphLaneView: View {
                          with: .color(colors[row.lane % colors.count]))
         }.accessibilityLabel("提交图，轨道 \(row.lane + 1)，\(row.commit.parents.count) 个父提交")
     }
-}
-
-private func copy(_ text: String) {
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(text, forType: .string)
 }

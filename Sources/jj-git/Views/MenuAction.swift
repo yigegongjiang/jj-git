@@ -7,6 +7,21 @@ struct MenuAction {
     let action: () -> Void
 }
 
+extension MenuAction {
+    /// 复制仓库内相对路径 / 完整路径；多个文件逐行拼接。
+    static func copyPaths(_ paths: [String], root: String) -> [MenuAction] {
+        [MenuAction(title: "复制相对路径") { copyToPasteboard(paths.joined(separator: "\n")) },
+         MenuAction(title: "复制完整路径") {
+             copyToPasteboard(paths.map { root + "/" + $0 }.joined(separator: "\n"))
+         }]
+    }
+}
+
+func copyToPasteboard(_ text: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
+}
+
 /// 各组菜单项，组间以分隔线隔开。
 struct MenuActionGroups: View {
     let groups: [[MenuAction]]
