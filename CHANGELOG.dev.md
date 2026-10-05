@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.47] - 2026-10-05
+
+### Added
+
+- 辅助功能（Accessibility）覆盖右键菜单、列表行与差异行勾选，自动化工具可不借助鼠标完成操作
+  - 列表行（变更文件 / 提交 / 提交文件 / 仓库检索）AXPress = 选中或打开；仓库检索行改为 Button
+  - 右键菜单由 `MenuAction` 统一渲染，可用项同时暴露为命名动作 `Name:<标题>`（disabled 项不暴露，AX 动作不受 `.disabled` 约束）
+  - `DiffLineCell` 暴露为 AXCheckBox；图标按钮补 label；关键控件加 `accessibilityIdentifier`
+
 ## [0.4.46] - 2026-10-05
 
 ### Added
