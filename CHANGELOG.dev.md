@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.52] - 2026-10-05
+
+### Added
+
+- 新增提交信息默认内容配置（`commit.defaultMessage`）：输入框预填该内容，提交后恢复，可直接提交
+  - `AppConfig.Commit.defaultMessage` 初始化 / 提交后重置 `RepositorySession.message`；`messageUntouched` 替代 `message.isEmpty`（Amend 载入上次信息 / `canRestart`），移入 `RepositorySession+Commit.swift`
+
 ## [0.4.51] - 2026-10-05
 
 ### Changed
