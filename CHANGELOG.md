@@ -11,6 +11,12 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.27] - 2026-10-05
+
+### Changed
+
+- 提交历史使用 Dracula 深浅交替行背景，便于区分提交；选中行保留高亮
+
 ## [0.4.26] - 2026-10-05
 
 ### Added

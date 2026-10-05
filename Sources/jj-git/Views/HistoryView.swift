@@ -76,8 +76,10 @@ private struct CommitGraphPanel: View {
                 EmptyState(title: "暂无提交", symbol: "clock")
             } else {
                 List(selection: $selection) {
-                    ForEach(session.graph) { row in
+                    ForEach(Array(session.graph.enumerated()), id: \.element.id) { index, row in
                         historyRow(row).tag(row.id)
+                            .listRowBackground(selection == row.id ? nil :
+                                Theme.titleBar.opacity(index.isMultiple(of: 2) ? 0 : 0.35).background(Theme.window))
                             .contextMenu {
                                 Button("复制 SHA") {
                                     NSPasteboard.general.clearContents()

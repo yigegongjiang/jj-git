@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.27] - 2026-10-05
+
+### Changed
+
+- 提交历史使用 Dracula 深浅交替行背景，便于区分提交；选中行保留高亮
+  - `HistoryView` 按行序号交替使用 `Theme.window` 与 35% `Theme.titleBar` 叠色；选中行清除自定义背景，保持提交 SHA 身份
+
 ## [0.4.26] - 2026-10-05
 
 ### Added
