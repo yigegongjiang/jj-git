@@ -261,6 +261,12 @@ struct DiffTarget: Identifiable, Hashable, Sendable {
     }
 }
 
+/// 全部差异中滚动到 `id`（DiffTarget.id）对应文件；token 区分重复请求同一文件。
+struct DiffReveal: Equatable {
+    let id: String
+    let token: Int
+}
+
 struct FileDiff: Identifiable, Sendable {
     let target: DiffTarget
     let diff: TextDiff

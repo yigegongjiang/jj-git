@@ -34,6 +34,10 @@ struct ChangeList: View {
         session.status.changes.filter { staged ? $0.staged : $0.unstaged }
     }
 
+    private var overviewActive: Bool {
+        session.diffOverview && session.selectedStaged == staged
+    }
+
     private var selectedFiles: [FileChange] {
         files.filter { selection.contains($0.id) }
     }
@@ -42,7 +46,7 @@ struct ChangeList: View {
         VStack(spacing: 0) {
             SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)",
                            titleAction: showOverview,
-                           titleActive: session.diffOverview && session.selectedStaged == staged) {
+                           titleActive: overviewActive) {
                 HStack(spacing: 10) {
                     Button { transfer(selectedFiles) } label: {
                         Image(systemName: staged ? "chevron.up" : "chevron.down")
@@ -70,6 +74,12 @@ struct ChangeList: View {
                                 .foregroundStyle(file.conflicted ? Theme.deleted : Color.secondary).frame(width: 14)
                             Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
                             Spacer(minLength: 0)
+                            if overviewActive {
+                                RevealButton {
+                                    selection = []
+                                    session.revealChange(file, staged: staged)
+                                }
+                            }
                         }
                         .tag(file.id).help(file.path)
                     }
@@ -145,6 +155,7 @@ struct ChangeList: View {
             if targets.count == 1, let file = targets.first {
                 Divider()
                 Button("在编辑器打开") { workspace.openEditor(session.location.root + "/" + file.path) }
+                Button("在文件夹中显示") { workspace.revealInFileManager(session.location.root + "/" + file.path) }
             }
         }
     }

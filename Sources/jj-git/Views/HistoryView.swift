@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HistoryView: View {
+    @Environment(\.workspace) private var workspace
     @Bindable var session: RepositorySession
     @Binding var dialog: RepositoryDialog?
 
@@ -37,14 +38,34 @@ struct HistoryView: View {
                                     Text(file.status).font(.mono(-2))
                                         .foregroundStyle(.secondary)
                                     Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
+                                    Spacer(minLength: 0)
+                                    if session.selectedCommitFile == nil {
+                                        RevealButton { session.revealCommitFile(file) }
+                                    }
                                 }.tag(file.id).help(file.path)
                             }
                         }.listStyle(.plain).scrollContentBackground(.hidden)
+                            .contextMenu(forSelectionType: String.self) { paths in
+                                if paths.count == 1, let file = detail.files.first(where: { paths.contains($0.id) }) {
+                                    fileMenu(file)
+                                }
+                            }
                     }
                 }
             } else {
                 EmptyState(title: "选择提交查看详情", symbol: "clock")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func fileMenu(_ file: CommitFile) -> some View {
+        Button("在编辑器打开") { workspace?.openEditor(session.location.root + "/" + file.path) }
+            .disabled(file.status.hasPrefix("D"))
+        Button("在文件夹中显示") { workspace?.revealInFileManager(session.location.root + "/" + file.path) }
+        Button("复制路径") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(file.path, forType: .string)
         }
     }
 }

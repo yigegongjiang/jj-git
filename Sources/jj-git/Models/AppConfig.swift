@@ -9,6 +9,11 @@ struct AppConfig: Codable, Equatable, Sendable {
         var bundleID = "com.microsoft.VSCode"
     }
 
+    struct FileBrowser: Codable, Equatable, Sendable {
+        /// 「在文件夹中显示」使用的 App；未安装 / 为空时使用 Finder。
+        var bundleID = "com.apple.finder"
+    }
+
     struct Terminal: Codable, Equatable, Sendable {
         /// 按顺序使用第一个已安装的终端。
         var bundleIDs = ["com.googlecode.iterm2", "com.apple.Terminal"]
@@ -79,6 +84,7 @@ struct AppConfig: Codable, Equatable, Sendable {
 
     var appearance = Appearance()
     var editor = Editor()
+    var fileManager = FileBrowser()
     var terminal = Terminal()
     var git = Git()
     var pull = Pull()
@@ -98,6 +104,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.appearance.diffLineSpacing = appearance.diffLineSpacing.clamped(0...20)
         value.editor.path = editor.path.trimmingCharacters(in: .whitespacesAndNewlines)
         value.editor.bundleID = editor.bundleID.trimmingCharacters(in: .whitespacesAndNewlines)
+        value.fileManager.bundleID = fileManager.bundleID.trimmingCharacters(in: .whitespacesAndNewlines)
         value.terminal.bundleIDs = terminal.bundleIDs.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         value.git.executable = git.executable.trimmingCharacters(in: .whitespacesAndNewlines)

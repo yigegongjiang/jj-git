@@ -37,7 +37,7 @@ struct DiffView: View {
             } else if entries.isEmpty {
                 EmptyState(title: "无差异", symbol: "doc.text.magnifyingglass")
             } else {
-                DiffTableView(entries: entries, wrap: wrap, state: state, actions: actions)
+                DiffTableView(entries: entries, wrap: wrap, reveal: session.diffReveal, state: state, actions: actions)
             }
         }
         .dismissConfirmationOnBackgroundClick(isPresented: Binding(
@@ -104,4 +104,18 @@ struct DiffView: View {
         }
         anchor = (entry.id, line.id)
     }
+}
+
+/// 选择与操作状态；在 SwiftUI body 中读取后按值传入，变化时只重配可见行。
+struct DiffTableState: Equatable {
+    var editable = false
+    var focused: String?
+    var selectedLines: Set<Int> = []
+    var busy = false
+}
+
+struct DiffTableActions {
+    let toggle: (FileDiff, DiffLine, _ extend: Bool) -> Void
+    let apply: (FileDiff, Set<Int>) -> Void
+    let discard: (FileDiff, Set<Int>) -> Void
 }

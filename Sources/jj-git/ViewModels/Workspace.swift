@@ -214,6 +214,22 @@ final class Workspace {
         }
     }
 
+    /// Finder 直接选中文件；其他文件管理器打开该文件路径（QSpace 等定位到所在文件夹）。
+    /// 文件已删除时退到最近的已存在上级目录。
+    func revealInFileManager(_ path: String) {
+        var url = URL(fileURLWithPath: path)
+        while !FileManager.default.fileExists(atPath: url.path), url.pathComponents.count > 1 {
+            url.deleteLastPathComponent()
+        }
+        let bundleID = config.fileManager.bundleID
+        if bundleID != "com.apple.finder",
+           let application = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            launch(url.path, with: application)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
+
     func chooseEditor(open path: String? = nil) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.applicationBundle]

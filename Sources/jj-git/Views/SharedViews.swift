@@ -122,6 +122,23 @@ struct SectionHeading<Trailing: View>: View {
     }
 }
 
+/// 文件行尾按钮：全部差异激活时显示，滚动定位到该文件（左键行仍只显示单文件差异）。
+struct RevealButton: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: hovering ? "location.fill" : "location").font(.ui(-2))
+                .foregroundStyle(hovering ? Theme.accent : Color.secondary)
+                .frame(width: 16, height: 16).contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless).fixedSize()
+        .onHover { hovering = $0 }
+        .help("在全部差异中定位").accessibilityLabel("在全部差异中定位")
+    }
+}
+
 /// 可点击标题：常驻图标 + 悬停底色提示可点击；激活时高亮，表明差异区正显示其全部差异。
 private struct OverviewTitle: View {
     let title: String

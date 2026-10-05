@@ -9,6 +9,7 @@ extension RepositorySession {
             selectedLines = []
         }
         diffOverview = false
+        diffReveal = nil
         fileDiffs = []
         diffFallback = false
         selectedFile = file
@@ -17,15 +18,33 @@ extension RepositorySession {
         reloadSelectedDiff()
     }
 
-    func selectChanges(staged: Bool) {
+    /// `focus`：全部差异读取完成后聚焦、回退时单独显示的文件。
+    func selectChanges(staged: Bool, focus: FileChange? = nil) {
         diffOverview = true
+        diffReveal = nil
         selectedStaged = staged
-        selectedFile = nil
+        selectedFile = focus
         selectedLines = []
         fileDiffs = []
         diff = nil
         diffFallback = false
         loadDiffOverview(DiffTarget.changes(status, staged: staged))
+    }
+
+    /// 定位按钮：显示（或保持）全部差异并滚动到该文件；全部差异回退单文件时显示该文件。
+    func revealChange(_ file: FileChange, staged: Bool) {
+        let id = DiffTarget(path: file.path, staged: staged).id
+        if diffOverview, let entry = fileDiffs.first(where: { $0.id == id }) {
+            focusDiff(entry)
+        } else {
+            selectChanges(staged: staged, focus: file)
+        }
+        reveal(id)
+    }
+
+    func reveal(_ id: String) {
+        revealCount += 1
+        diffReveal = DiffReveal(id: id, token: revealCount)
     }
 
     /// 单文件模式下刷新选中文件；该文件已不在当前列表（暂存 / 放弃 / 提交）时回到全部差异。
@@ -49,6 +68,51 @@ extension RepositorySession {
         selectedFile = entry.target.file
         selectedStaged = entry.target.staged
         diff = entry.diff
+    }
+
+    /// 全部差异时不选中文件，点击任一文件（含第一个）都能切到单文件。
+    func showCommitOverview() {
+        guard let selectedCommit, let commitDetail else { return }
+        selectedCommitFile = nil
+        diffReveal = nil
+        diff = nil
+        loadDiffOverview(commitDetail.files.map { DiffTarget(path: $0.path) }, commit: selectedCommit)
+    }
+
+    /// 定位按钮：已在全部差异中则直接滚动，否则先切到全部差异。
+    func revealCommitFile(_ file: CommitFile) {
+        let id = DiffTarget(path: file.path).id
+        if selectedCommitFile != nil || !fileDiffs.contains(where: { $0.id == id }) {
+            showCommitOverview()
+        }
+        reveal(id)
+    }
+
+    /// 提交内容不变，全部差异中已读取的文件直接复用。
+    func selectCommitFile(_ file: CommitFile?) {
+        diffTask?.cancel()
+        diffGeneration += 1
+        let generation = diffGeneration
+        let cached = fileDiffs.first { $0.target.path == file?.path }?.diff
+        fileDiffs = []
+        diffFallback = false
+        diffReveal = nil
+        selectedCommitFile = file
+        diff = cached
+        guard let file, let selectedCommit, cached == nil else { loadingDiff = false; return }
+        loadingDiff = true
+        diffTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let result = try await command.query.commitDiff(selectedCommit, path: file.path)
+                try Task.checkCancellation()
+                guard generation == diffGeneration else { return }
+                diff = result
+            } catch is CancellationError { return } catch { self.error = error.localizedDescription }
+            if generation == diffGeneration {
+                loadingDiff = false
+            }
+        }
     }
 
     func loadDiffOverview(_ targets: [DiffTarget], commit: GitCommit? = nil) {
@@ -94,7 +158,8 @@ extension RepositorySession {
         loadingDiff = false
         if let commit {
             selectedCommit = commit
-            selectCommitFile(commitDetail?.files.first)
+            let files = commitDetail?.files ?? []
+            selectCommitFile(files.first { DiffTarget(path: $0.path).id == diffReveal?.id } ?? files.first)
         } else {
             let target = targets.first { $0.path == selectedFile?.path && $0.staged == selectedStaged } ?? targets[0]
             if selectedFile != target.file || selectedStaged != target.staged || diff == nil {

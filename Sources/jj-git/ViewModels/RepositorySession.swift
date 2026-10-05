@@ -29,6 +29,8 @@ final class RepositorySession: Identifiable {
     /// true = 全部差异（首次进入 / 手动触发）；选中单个文件后为 false，刷新时只读取该文件。
     var diffOverview = true
     var diffFallback = false
+    /// 文件行定位按钮的请求；其他导航清除，避免差异视图重建后重放。
+    var diffReveal: DiffReveal?
     var selectedLines: Set<Int> = []
     var message = ""
     var amend = false
@@ -51,6 +53,7 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var referenceKey = ""
     @ObservationIgnored var diffGeneration = 0
+    @ObservationIgnored var revealCount = 0
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var refreshFailure: String?
     /// 打开 / 切换到仓库后首次刷新：无本地变更则显示提交历史；手动切换分区即取消。
@@ -251,6 +254,7 @@ extension RepositorySession {
         selectedCommit = commit
         fileDiffs = []
         diffFallback = false
+        diffReveal = nil
         loadingDiff = false
         commitDetail = nil
         selectedCommitFile = nil
@@ -265,40 +269,6 @@ extension RepositorySession {
                 commitDetail = detail
                 showCommitOverview()
             } catch is CancellationError { return } catch { self.error = error.localizedDescription }
-        }
-    }
-
-    /// 全部差异时不选中文件，点击任一文件（含第一个）都能切到单文件。
-    func showCommitOverview() {
-        guard let selectedCommit, let commitDetail else { return }
-        selectedCommitFile = nil
-        diff = nil
-        loadDiffOverview(commitDetail.files.map { DiffTarget(path: $0.path) }, commit: selectedCommit)
-    }
-
-    /// 提交内容不变，全部差异中已读取的文件直接复用。
-    func selectCommitFile(_ file: CommitFile?) {
-        diffTask?.cancel()
-        diffGeneration += 1
-        let generation = diffGeneration
-        let cached = fileDiffs.first { $0.target.path == file?.path }?.diff
-        fileDiffs = []
-        diffFallback = false
-        selectedCommitFile = file
-        diff = cached
-        guard let file, let selectedCommit, cached == nil else { loadingDiff = false; return }
-        loadingDiff = true
-        diffTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                let result = try await command.query.commitDiff(selectedCommit, path: file.path)
-                try Task.checkCancellation()
-                guard generation == diffGeneration else { return }
-                diff = result
-            } catch is CancellationError { return } catch { self.error = error.localizedDescription }
-            if generation == diffGeneration {
-                loadingDiff = false
-            }
         }
     }
 

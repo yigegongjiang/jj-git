@@ -33,24 +33,11 @@ struct DiffRow {
     }
 }
 
-/// 选择与操作状态；在 SwiftUI body 中读取后按值传入，变化时只重配可见行。
-struct DiffTableState: Equatable {
-    var editable = false
-    var focused: String?
-    var selectedLines: Set<Int> = []
-    var busy = false
-}
-
-struct DiffTableActions {
-    let toggle: (FileDiff, DiffLine, _ extend: Bool) -> Void
-    let apply: (FileDiff, Set<Int>) -> Void
-    let discard: (FileDiff, Set<Int>) -> Void
-}
-
 /// 全部差异列表：NSTableView 复用行视图，行高预先计算查表，滚动时不做 SwiftUI 布局。
 struct DiffTableView: NSViewRepresentable {
     let entries: [FileDiff]
     let wrap: Bool
+    let reveal: DiffReveal?
     let state: DiffTableState
     let actions: DiffTableActions
 
@@ -92,6 +79,9 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
     private var pending = IndexSet()
     private var textWidth: CGFloat = 0
     private var measureGeneration = 0
+    private var reveal: DiffReveal?
+    /// 待滚动到的行；布局推迟时由 layoutWidth 在加载后执行。
+    private var scrollTarget: Int?
 
     private var viewport: CGFloat {
         scrollView.contentSize.width
@@ -137,8 +127,9 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
             state = view.state
             refreshVisibleRows()
         }
-        if idsChanged {
-            scroll(to: 0)
+        if idsChanged || view.reveal != reveal {
+            reveal = view.reveal
+            scrollToReveal(fallback: idsChanged)
         }
     }
 
@@ -182,7 +173,12 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
             table.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<rows.count))
             refreshVisibleRows()
         }
-        restore(anchor)
+        if let target = scrollTarget {
+            scrollTarget = nil
+            scroll(to: target)
+        } else {
+            restore(anchor)
+        }
         measureVisible()
         scheduleRefine()
     }
@@ -308,6 +304,27 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
                                                selected: selection(entry).contains(line.id),
                                                selectable: canEdit(entry) && line.changed, wrap: wrap)
             (view as? DiffLineCell)?.configure(content, metrics: metrics) { actions?.toggle(entry, line, $0) }
+        }
+    }
+}
+
+/// 文件定位：内容集合变化（如全部差异读取完成）或新请求时滚动到该文件头，否则回到顶部。
+extension DiffTableCoordinator {
+    private func scrollToReveal(fallback: Bool) {
+        let row = reveal.flatMap { reveal in
+            rows.firstIndex {
+                if case .file = $0.content {
+                    $0.entry.id == reveal.id
+                } else {
+                    false
+                }
+            }
+        }
+        guard let target = row ?? (fallback ? 0 : nil) else { return }
+        if needsReload || table.numberOfRows != rows.count {
+            scrollTarget = target
+        } else {
+            scroll(to: target)
         }
     }
 }

@@ -23,13 +23,18 @@ enum ConfigStore {
         return try encoder.encode(value) + Data("\n".utf8)
     }
 
-    /// 默认模板与新建配置均带逐键说明；数值取自模型。
+    /// 默认模板与新建配置均带逐键说明；数值取自模型。同名键按 `分组.键` 区分说明。
     static func encodeConfig(_ config: AppConfig) throws -> Data {
         let text = try utf8(encode(config))
+        var section = ""
         let lines = text.components(separatedBy: "\n").map { line -> String in
             let parts = line.split(separator: "\"", maxSplits: 2)
-            guard parts.count == 3, let note = configNotes[String(parts[1])] else { return line }
+            guard parts.count == 3 else { return line }
             let indent = String(line.prefix(while: { $0 == " " }))
+            if indent.count == 2 {
+                section = String(parts[1])
+            }
+            guard let note = configNotes[section + "." + parts[1]] ?? configNotes[String(parts[1])] else { return line }
             return "\(indent)// \(note)\n\(line)"
         }
         return Data(("// 修改后重启生效；缺失键 / null 取默认值，越界数值收敛。\n" + lines.joined(separator: "\n")).utf8)
@@ -88,6 +93,8 @@ enum ConfigStore {
         "editor": "外部编辑器",
         "path": "编辑器 .app 绝对路径；为空 / 不存在时按 bundleID 查找。",
         "bundleID": "编辑器 App 的 bundle identifier。",
+        "fileManager": "文件管理器",
+        "fileManager.bundleID": "「在文件夹中显示」App 的 bundle identifier；未安装 / 空值使用 Finder。",
         "terminal": "外部终端",
         "bundleIDs": "终端 bundle identifier，依次使用第一个已安装 App。",
         "git": "Git 执行限制",
