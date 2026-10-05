@@ -84,14 +84,7 @@ struct LibraryView: View {
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { repository in
                 let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
                 HStack(spacing: 6) {
-                    Menu {
-                        colorPicker(repository).pickerStyle(.inline)
-                    } label: {
-                        Image(systemName: marker == nil ? "folder" : "folder.fill")
-                            .foregroundStyle(marker?.color ?? .secondary)
-                    }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                    .help("仓库颜色").accessibilityLabel("\(repository.name) 仓库颜色")
+                    repositoryIcon(repository)
                     Button {
                         Task { await workspace.open(repository.path) }
                     } label: {
@@ -127,6 +120,23 @@ struct LibraryView: View {
                     Button("从列表移除") { workspace.remove(repository.path) }
                         .disabled(workspace.sessions[repository.path]?.operation != nil)
                 }
+            }
+    }
+
+    private func repositoryIcon(_ repository: SavedRepository) -> some View {
+        let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
+        return Image(systemName: marker == nil ? "folder" : "folder.fill")
+            .foregroundStyle(marker?.color ?? .secondary)
+            .frame(width: 18, height: 18)
+            .accessibilityHidden(true)
+            .overlay {
+                Menu {
+                    colorPicker(repository).pickerStyle(.inline)
+                } label: {
+                    Color.clear.frame(width: 18, height: 18)
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .help("仓库颜色").accessibilityLabel("\(repository.name) 仓库颜色")
             }
     }
 
