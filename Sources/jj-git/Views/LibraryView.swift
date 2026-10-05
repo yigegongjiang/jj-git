@@ -82,25 +82,39 @@ struct LibraryView: View {
     private func repositories(in groupID: UUID?) -> some View {
         ForEach(workspace.library.repositories.filter { $0.groupID == groupID }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { repository in
-                Button {
-                    Task { await workspace.open(repository.path) }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder").foregroundStyle(.secondary)
-                        Text(repository.name).lineLimit(1)
-                        Spacer(minLength: 0)
-                        if workspace.opening.contains(repository.path) {
-                            ProgressView().controlSize(.mini)
-                        }
+                let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
+                HStack(spacing: 6) {
+                    Menu {
+                        colorPicker(repository).pickerStyle(.inline)
+                    } label: {
+                        Image(systemName: marker == nil ? "folder" : "folder.fill")
+                            .foregroundStyle(marker?.color ?? .secondary)
                     }
-                    .padding(.vertical, 3)
-                    .foregroundStyle(workspace.library.selectedPath == repository.path ? Theme.accent : Theme
-                        .foreground)
-                    .contentShape(Rectangle())
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .help("仓库颜色").accessibilityLabel("\(repository.name) 仓库颜色")
+                    Button {
+                        Task { await workspace.open(repository.path) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(repository.name).lineLimit(1)
+                            Spacer(minLength: 0)
+                            if workspace.opening.contains(repository.path) {
+                                ProgressView().controlSize(.mini)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }.buttonStyle(.plain)
                 }
-                .buttonStyle(.plain).help(repository.path)
+                .padding(.vertical, 3)
+                .foregroundStyle(marker?.color ?? (workspace.library.selectedPath == repository.path
+                        ? Theme.accent : Theme.foreground))
+                .background(workspace.library.selectedPath == repository.path
+                    ? Theme.accent.opacity(0.12) : .clear)
+                .help(repository.path)
+                .accessibilityValue(marker?.title ?? "默认颜色")
                 .contextMenu {
                     Button("打开仓库") { Task { await workspace.open(repository.path) } }
+                    colorPicker(repository).pickerStyle(.menu)
                     Menu("移动到分组") {
                         Button("未分组") { workspace.move(repository.path, to: nil) }
                         ForEach(workspace.library.groups) { group in
@@ -114,6 +128,46 @@ struct LibraryView: View {
                         .disabled(workspace.sessions[repository.path]?.operation != nil)
                 }
             }
+    }
+
+    private func colorPicker(_ repository: SavedRepository) -> some View {
+        Picker("仓库颜色", selection: Binding(
+            get: { repository.color.flatMap(RepositoryColor.init(rawValue:))?.rawValue ?? "" },
+            set: { workspace.setRepositoryColor(repository.path, color: $0.isEmpty ? nil : $0) }
+        )) {
+            Text("默认").tag("")
+            ForEach(RepositoryColor.allCases, id: \.rawValue) { color in
+                Text(color.title).tag(color.rawValue)
+            }
+        }
+    }
+}
+
+private enum RepositoryColor: String, CaseIterable {
+    case red, orange, yellow, green, cyan, purple, pink
+
+    var title: String {
+        switch self {
+        case .red: "红色"
+        case .orange: "橙色"
+        case .yellow: "黄色"
+        case .green: "绿色"
+        case .cyan: "青色"
+        case .purple: "紫色"
+        case .pink: "粉色"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .red: Theme.deleted
+        case .orange: Theme.orange
+        case .yellow: Color(.sRGB, red: 241 / 255, green: 250 / 255, blue: 140 / 255)
+        case .green: Theme.green
+        case .cyan: Color(.sRGB, red: 139 / 255, green: 233 / 255, blue: 253 / 255)
+        case .purple: Theme.accent
+        case .pink: Color(.sRGB, red: 255 / 255, green: 121 / 255, blue: 198 / 255)
+        }
     }
 }
 

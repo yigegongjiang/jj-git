@@ -21,6 +21,8 @@ struct RepositoryGroup: Identifiable, Codable, Equatable, Sendable {
 struct SavedRepository: Identifiable, Codable, Equatable, Sendable {
     let path: String
     var groupID: UUID?
+    /// 侧栏颜色名称；nil 使用默认颜色。
+    var color: String?
     /// 使用热度：每次切换到该仓库 +1，按半衰期指数衰减；值为 `usedAt` 时刻的分数。
     var usage: Double?
     /// 最近一次切换到该仓库的时间（Unix 秒）。
