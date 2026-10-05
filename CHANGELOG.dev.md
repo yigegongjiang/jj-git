@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.39] - 2026-10-05
+
+### Changed
+
+- 跟随版本同步发布
+  - `.github/workflows/release.yml`: 构建 / 校验 / 打包 / 发布逻辑内联为 steps; 删除 `scripts/package.sh` + `scripts/publish-release.sh`
+
 ## [0.4.38] - 2026-10-05
 
 ### Added
