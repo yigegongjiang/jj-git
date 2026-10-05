@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.48] - 2026-10-05
+
+### Added
+
+- 辅助功能覆盖全部界面操作：右键菜单、Push / 显示列 / 排序 / 仓库颜色菜单、差异行连选都可直接按下，Peekaboo 等自动化工具无需鼠标即可操作
+  - `accessibilityMenuActions` 同时生成命名动作与 `accessibilityChildren` 子按钮（AXPress），只认 AX 标准动作的工具可直接调用
+  - Push / 显示列 / 侧栏排序 / 仓库颜色菜单项逐项暴露为子按钮；开关项标题带当前状态（开启：/ 关闭：）
+  - 差异行新增 `DiffLineRangeButton`（连选到此行）子按钮；上下文行标签修正
+
 ## [0.4.47] - 2026-10-05
 
 ### Added
