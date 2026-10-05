@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.50] - 2026-10-05
+
+### Added
+
+- 标签右键菜单新增「关闭标签」「关闭其他标签」「关闭左侧标签」「关闭右侧标签」；当前标签被关闭时切换到右键所在标签
+  - `Workspace.close(_:keeping:)` 批量关闭（跳过进行中任务的标签，先切到锚点避免逐个激活）；`RepositoryTabs.tabActions` 同时暴露为 AX 子按钮
+
 ## [0.4.49] - 2026-10-05
 
 ### Added
