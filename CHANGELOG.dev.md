@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.40] - 2026-10-05
+
+### Changed
+
+- 打开或切换到仓库时，若没有本地变更，自动显示「提交历史」
+  - `RepositorySession.activate()` 置 `sectionAutoPending`; 首次 `refreshSnapshot()` 后 `changes` 为空且 `graph` 非空 -> `changeSection(.history)`; 手动切换即取消
+
 ## [0.4.39] - 2026-10-05
 
 ### Changed
