@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 顶部「性能」面板：打开或点「重新测量」时测量一次，不持续采样。
-/// 口径与面板未打开时一致：内存取弹窗出现前的采样；CPU 窗口避开弹窗动画，窗口内不更新界面。
+/// 口径与面板未打开时一致：内存取弹窗出现前的采样；CPU 窗口避开弹窗动画与激活刷新，窗口内不更新界面。
 struct PerformanceView: View {
     let workspace: Workspace
     let baseline: ProcessSample?
@@ -104,6 +104,7 @@ struct PerformanceView: View {
         guard let memory = request == 0 ? baseline ?? ProcessSample.current() : ProcessSample.current() else { return }
         do {
             try await Task.sleep(for: .milliseconds(500))
+            try await settle()
             guard let start = ProcessSample.current() else { return }
             try await Task.sleep(for: .seconds(1))
             guard let end = ProcessSample.current() else { return }
@@ -114,6 +115,22 @@ struct PerformanceView: View {
             tabs = measured
             measuredAt = Date()
         } catch { return }
+    }
+
+    /// 点击按钮若同时激活 App，会引发约 1~2 秒的刷新（含状态栏转圈）与重绘；
+    /// 等刷新结束且连续 2 个 100ms 片段低于 5% 再开窗口，最多等 3 秒。持续占用照常测出，只排除瞬时活动。
+    private func settle() async throws {
+        var previous = ProcessSample.current()
+        var quiet = 0
+        var waited = 0
+        while quiet < 2, waited < 30 {
+            try await Task.sleep(for: .milliseconds(100))
+            waited += 1
+            guard let last = previous, let now = ProcessSample.current() else { return }
+            let idle = now.cpuPercent(since: last) < 5 && workspace.selected?.refreshing != true
+            quiet = idle ? quiet + 1 : 0
+            previous = now
+        }
     }
 
     private func measureTabs() async -> [TabUsage] {
