@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.31] - 2026-10-05
+
+### Changed
+
+- 项目介绍突出响应速度、简洁稳定与轻量运行，并增加提交历史和本地变更界面展示
+  - `README.md` 聚焦产品展示；`docs/screenshots/` 保存演示界面，操作与架构说明迁至 `docs/reference.md`
+
 ## [0.4.30] - 2026-10-05
 
 ### Added

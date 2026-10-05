@@ -1,68 +1,27 @@
-```When Editing
-本文档作用: 工程总览 (价值主张 / 使用 / 架构 / 结构); MUST NOT 写发布流程 (→ workflow.md) / LLM 约束 (→ AGENTS.md)
-遵循 AGENTS.md 文档编写规范
-- 章节按需增删, 只留项目真有的; 首行一行价值主张, MUST NOT 带 LLM 提示
-- 短并列项用表格; 可执行步骤 fenced + `#` 注释同行
-- NEVER 写「开发」段 (VibeCoding 不向人类解释 dev 命令)
-```
-
 # jj-git
 
-Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 + 易用.
+以快速响应、紧凑交互和长期稳定运行为核心的 macOS 原生 Git 客户端。
 
-## 核心要求（MUST）
+- **精简轻量**：仅保留高频 Git 操作，以简洁、稳定和极低资源占用为设计目标。
+- **快速响应**：Git 操作在后台执行，支持取消与超时，保持界面可交互。
+- **紧凑高效**：多仓库标签、可调分栏与连续差异视图，减少窗口切换与逐文件操作。
+- **自动同步**：监听文件变化并刷新仓库状态，支持 Worktree 的独立工作目录与共享 Git 数据。
+- **长期运行**：闲置标签释放仓库数据，命令日志自动轮转，控制持续运行的资源占用。
 
-- 简洁实用高效率：个人自用，仅有核心高频操作功能；界面清晰、布局紧凑，最大限度利用屏幕空间，减少间距与留白；实用优先，美观不作为目标。
-- 稳定性：长期运行稳定，避免崩溃、资源泄漏及随运行时间增长的性能劣化。
-- 快速同步：文件变化后尽快更新界面的 Git 变更状态；可接受延迟 1–2 秒，MUST NOT 达到 10 秒或分钟级。
-- Worktree：支持 Git Worktree，各 Worktree 的状态展示与操作准确。
-- App 性能：启动、界面交互及按钮响应快速；耗时操作 MUST NOT 阻塞 UI 或造成长时间等待。
-- 不要过度设计
-
-## 使用
-
-安装位置: `/Applications/jj-git.app`;
-
-- 仓库: 打开 ⌘O / 扫描导入 ⇧⌘O / 最近仓库 ⌘P (按使用热度排序, 半衰期 3 天; 条数 `tabs.recentCount` 默认 15, 1–100; 输入筛选) / 分组 (折叠, 右键移动) / 多标签 ⌘W ⌘⌥←→ ⌃⇥; 标签页重启恢复
-- 窗口: 无标题栏, 标签与窗口按钮同一行 (空白处拖动 / 双击缩放); 侧栏显示 / 隐藏 ⌃⌘S; 分割线均可拖动调整, 位置记忆
-- 切换: 历史 ⌘1 / 本地变更 ⌘2 / ⇥ 两者互切 (焦点在可编辑文本时不生效)
-- 历史 ⌘1: 提交图 + 详情 + 文件差异; 标题首列, 分支 / 标签第二列自动折行;「显示列」切换分支 / 标签、作者、时间、SHA (`history.showReferences/showAuthor/showTime/showHash`, 全局记忆); 时间本地时区 `yyyy-MM-dd HH:mm`,「精简时间」切换 `yyMMdd.HHmm` (`history.compactTime`, 默认 false, 全局记忆), 时间宽度随内容调整; 窄窗口元数据另起一行; 右键复制 SHA / 新建分支 / 新建标签
-- 差异: 默认连续展示全部文件, 点击文件跳转; 预处理超时回退首文件 (默认 1 秒, `diff.previewTimeoutMilliseconds` 可调 100–30000 ms); 默认自动换行, 标题「自动换行」取消后横向滚动 (全局记忆); 单行超 1000 字符截断显示
-- 本地变更 ⌘2: 默认未暂存全部差异, 点击已暂存 / 未暂存标题或列表空白切换; 双击 / 回车 / 空格暂存·取消; 标题按钮暂存选中 / 全部; 按块 / 按行 (⇧点击连选) 暂存·取消·放弃; 加入 `.gitignore`
-- 提交: ⌘↩ 提交 / ⌘⌥↩ 提交并推送; Amend (推送时 force-with-lease)
-- 分支 / 标签 / 远程: 侧栏 + 按钮 (新建分支 ⌘B) 与右键菜单; 标签默认附注并推送; 分区标题点击折叠 (默认展开, 记忆)
-- 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
-- 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
-- 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改后点击顶部「重启应用」生效
-- 性能: 顶部「性能」(「重启应用」右侧) 弹窗, 打开时测量一次 (口径不含面板自身: 内存取弹窗前采样, CPU 取弹窗动画结束后 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / 本进程与 Git 累计 CPU 时间 + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)
-- Git 命令记录: `~/.config/jj-git/logs/` 每仓库一个文件, 含耗时; `sort -t$'\t' -k2 -n <file>` 找慢命令
-- 外观: 固定 Dracula 深色主题; 界面 / 等宽字体与字号由 `config.json` `appearance` 设定; 差异行距 `appearance.diffLineSpacing` (自然行高外额外 pt, 默认 2, 0–20)
-- 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
-
-## 架构
-
-- Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS 14+; 无第三方依赖
-- 主题: `Theme` (Dracula 色值) + `Typography` (字体缓存, 启动时配置); 每个 `NSHostingView` 根 (分栏 / 弹窗) 调 `.themed()`, 环境值不跨宿主
-- 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / 签名 (默认 ad-hoc, 传 Team 用 Apple Development)
-- Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
-- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree), 合并 1 秒内事件; App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
-- 标签释放: 未激活超过 `tabs.idleUnloadSeconds` (默认 180 秒, 1–86400) 释放 session, 保留标签位置; 未挂载标签为灰紫色, 点击重新加载; Git 操作完成后释放; 未提交的提交信息与视图状态随 session 清除; 配置修改后重启生效
-- 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
-- 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
-- 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) JSON; 启动时读取; 配置解析失败使用默认值并提示, 状态解析失败停写
-  - `config.json`: 设置 (字体 / 差异行距 / 编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔 / 命令记录); 缺失键取默认, 越界收敛
-  - `state.json`: 仓库列表 (含使用热度 `usage` / `usedAt`) / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改需重启, 运行期间由 APP 写入
-  - `config.default.json`: 全部键默认值, 启动时刷新, 仅供查阅
-  - `logs/<目录名>-<路径哈希>.log`: 每仓库 (工作目录) 的 Git 命令记录, 一行一条: 开始时间 / 耗时 ms / 结果 / stdout 字节 / 命令 (URL 凭据脱敏) / 失败信息; 异步写入; 超 `commandLog.maxFileMiB` 轮转为 `.log.1`; 配置监听忽略 `logs/`
-- MUST NOT 主动使用 `UserDefaults`: 窗口 / 分栏的 AppKit 自动保存已关闭, 改写 `state.json`
-
-## 结构
+## 界面
 
 <!-- prettier-ignore -->
-| 目录 | 职责 |
+| 提交历史 | 本地变更 |
 | --- | --- |
-| `Sources/jj-git/Commands` | Git 进程执行 / 只读查询 / 写操作 |
-| `Sources/jj-git/Models` | 状态 / 引用 / 差异与补丁 / 提交图 / 仓库库模型 |
-| `Sources/jj-git/Native` | FSEvents 监听 / 登录 shell 环境 |
-| `Sources/jj-git/ViewModels` | `Workspace` (仓库库 + 标签) / `RepositorySession` (单仓库状态与操作) |
-| `Sources/jj-git/Views` | 主窗口各区域 / 弹窗 / 菜单快捷键 |
+| [![提交历史：仓库列表、分支图、提交详情与文件差异](docs/screenshots/history.png)](docs/screenshots/history.png) | [![本地变更：文件列表、连续差异与提交面板](docs/screenshots/changes.png)](docs/screenshots/changes.png) |
+
+演示仓库的应用界面；点击图片可查看原图。
+
+## 核心功能
+
+- **仓库与 Worktree**：批量导入、分组、多标签、最近仓库筛选、Worktree 切换，恢复标签与窗口布局。
+- **提交历史**：提交图、分支与标签、提交详情，多文件差异连续展示。
+- **变更与提交**：按文件、差异块或行暂存与取消暂存，放弃变更、Amend、提交并推送。
+- **分支与同步**：分支、标签与远程管理，Fetch / Pull / Push，支持 rebase + autostash 与 force-with-lease。
+
+Swift + SwiftUI / macOS 14+ / Dracula 深色主题。
