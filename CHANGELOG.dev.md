@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.37] - 2026-10-05
+
+### Fixed
+
+- 「性能」面板的 CPU 读数不再计入点击按钮时激活应用引发的刷新与重绘，反映面板打开前的实际占用
+  - `PerformanceView.settle()`: 等 `refreshing` 结束 + 连续 2 个 100ms 片段 < 5%（上限 3 秒）再开 1 秒 CPU 窗口
+
 ## [0.4.36] - 2026-10-05
 
 ### Added
