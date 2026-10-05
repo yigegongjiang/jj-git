@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.41] - 2026-10-05
+
+### Changed
+
+- 显示 / 隐藏侧边栏快捷键改为 ⇧⌘S
+  - `WorkspaceCommands` 侧栏菜单项 `.keyboardShortcut("s", modifiers: [.command, .shift])`; 提示 / 快捷键列表同步
+
 ## [0.4.40] - 2026-10-05
 
 ### Changed
