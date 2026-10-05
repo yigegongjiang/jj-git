@@ -7,6 +7,16 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.42] - 2026-10-05
+
+### Changed
+
+- 选中文件后只显示该文件的差异；全部差异仅在首次进入或点击「未暂存 / 已暂存 / 变更文件」标题时显示
+  - `RepositorySession.diffOverview` 区分模式; `refreshChangesDiff` 单文件模式只刷新选中文件, 文件移出列表时回到全部差异; 删除 `diffScrollID` / 滚动定位
+  - 全部差异读取失败回退单文件时保留当前选中文件; 历史全部差异不选中文件, `showCommitOverview` 绑定「变更文件」标题
+- 空格暂存 / 取消暂存选中文件后，自动选中并预览下一项（末尾时选中上一项）
+  - `ChangeList.transfer` 在 `perform` 后设置 `selection`, 仅当选中项全部被转移时跳转
+
 ## [0.4.41] - 2026-10-05
 
 ### Changed
