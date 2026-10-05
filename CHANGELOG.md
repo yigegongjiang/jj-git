@@ -11,6 +11,13 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.25] - 2026-10-05
+
+### Changed
+
+- 提交历史的分支 / 标签独立显示并自动折行，长名称完整展示；仅标签溢出的提交行增高
+- 标签移除 `tag:` 前缀，以绿色区分标签、紫色区分分支
+
 ## [0.4.24] - 2026-10-05
 
 ### Fixed

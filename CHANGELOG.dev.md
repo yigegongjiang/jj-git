@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.25] - 2026-10-05
+
+### Changed
+
+- 提交历史的分支 / 标签独立显示并自动折行，长名称完整展示；仅标签溢出的提交行增高
+  - `HistoryView`：`CommitRefLayout` 按 190 pt 排列标签，长名称内部换行；图轨道覆盖整行，按实际高度绘制
+- 标签移除 `tag:` 前缀，以绿色区分标签、紫色区分分支
+  - `HistoryView`：按 `tag: ` 判断引用类型，展示时去除前缀，悬停保留完整引用信息
+
 ## [0.4.24] - 2026-10-05
 
 ### Fixed
