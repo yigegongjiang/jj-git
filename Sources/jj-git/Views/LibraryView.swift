@@ -170,22 +170,27 @@ struct RepositoryTabs: View {
     }
 }
 
-/// ⌘P：最近使用的仓库；输入筛选，↑↓ 选择，回车打开，Esc 关闭。
-struct RecentRepositoriesView: View {
+/// 仓库检索：输入筛选，↑↓ 选择，回车打开，Esc 关闭。
+struct RepositoryPickerView: View {
     let workspace: Workspace
+    var allRepositories = false
     @State private var query = ""
     @State private var index = 0
     @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
 
     private var repositories: [SavedRepository] {
-        workspace.recentRepositories(matching: query.trimmingCharacters(in: .whitespaces))
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if allRepositories {
+            return workspace.sidebarRepositories(matching: term)
+        }
+        return workspace.recentRepositories(matching: term)
     }
 
     var body: some View {
         let items = repositories
         VStack(spacing: 0) {
-            TextField("最近仓库（输入名称筛选）", text: $query)
+            TextField(allRepositories ? "全部仓库（输入名称或路径筛选）" : "最近仓库（输入名称筛选）", text: $query)
                 .textFieldStyle(.plain).font(.ui(1)).padding(10)
                 .focused($focused)
                 .onSubmit { open(items) }
@@ -197,7 +202,7 @@ struct RecentRepositoriesView: View {
                 }
             ThemedDivider()
             if items.isEmpty {
-                Text(query.isEmpty ? "没有其他仓库" : "无匹配仓库")
+                Text(query.isEmpty ? (allRepositories ? "没有仓库" : "没有其他仓库") : "无匹配仓库")
                     .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(16)
             } else {
                 ScrollViewReader { proxy in

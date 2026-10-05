@@ -7,6 +7,17 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.32] - 2026-10-05
+
+### Added
+
+- `⌘⇧P` 检索侧栏全部仓库，支持名称 / 路径筛选、方向键选择与回车打开；保留 `⌘P` 最近仓库
+  - `RepositoryPickerView` 复用检索交互；`sidebarRepositories` 按名称排序、包含当前仓库、不限制数量；单一 sheet 状态区分 recent / all
+
+### Changed
+
+- Pull 快捷键改为 `⌘⌥P`
+
 ## [0.4.31] - 2026-10-05
 
 ### Changed

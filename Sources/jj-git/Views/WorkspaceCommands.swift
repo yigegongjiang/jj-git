@@ -21,9 +21,14 @@ struct WorkspaceCommands: Commands {
             // 已有弹窗时 SwiftUI 不会叠加第二个 sheet。
             Button("最近仓库…") {
                 if NSApp.mainWindow?.attachedSheet == nil {
-                    workspace.showingRecent = true
+                    workspace.repositoryPicker = .recent
                 }
             }.keyboardShortcut("p")
+            Button("全部仓库…") {
+                if NSApp.mainWindow?.attachedSheet == nil {
+                    workspace.repositoryPicker = .all
+                }
+            }.keyboardShortcut("p", modifiers: [.command, .shift])
             Button("关闭仓库标签") {
                 if let path = workspace.library.selectedPath {
                     workspace.close(path)
@@ -44,7 +49,7 @@ struct WorkspaceCommands: Commands {
             Button(workspace.config.pull.rebase ? "Pull（Rebase）" : "Pull") {
                 workspace.selected?.perform(.pull, title: "Pull")
             }
-            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .keyboardShortcut("p", modifiers: [.command, .option])
             .disabled(workspace.selected?.status.upstream.isEmpty != false)
             Button("Push 到上游") { workspace.selected?.pushToUpstream() }
                 .keyboardShortcut("u", modifiers: [.command, .shift])

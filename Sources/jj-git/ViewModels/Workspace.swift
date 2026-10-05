@@ -12,8 +12,7 @@ final class Workspace {
     var scanProgress = ""
     var error: String?
     var missingRepositories: [String] = []
-    /// ⌘P 最近仓库列表弹窗。
-    var showingRecent = false
+    var repositoryPicker: RepositoryPicker?
     @ObservationIgnored var repositoryCheckTask: Task<Void, Never>?
     /// 避免重复写入相同状态。
     @ObservationIgnored private var stateData: Data?

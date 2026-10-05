@@ -35,8 +35,8 @@ struct ContentView: View {
             workspace.selected?.refresh()
             workspace.checkMissingRepositories()
         }
-        .sheet(isPresented: $workspace.showingRecent) {
-            RecentRepositoriesView(workspace: workspace).dismissOnBackgroundClick()
+        .sheet(item: $workspace.repositoryPicker) { picker in
+            RepositoryPickerView(workspace: workspace, allRepositories: picker == .all).dismissOnBackgroundClick()
         }
         // 用 sheet：popover 弹出动画会让内存瞬时上涨约 130 MB，测量会把它算进去。
         .sheet(isPresented: $showingPerformance) {

@@ -1,5 +1,12 @@
 import Foundation
 
+enum RepositoryPicker: String, Identifiable {
+    case recent, all
+    var id: String {
+        rawValue
+    }
+}
+
 extension Workspace {
     func restore() async {
         checkMissingRepositories()
@@ -32,6 +39,17 @@ extension Workspace {
                 return left != right ? left < right : lhs.offset < rhs.offset
             }
         return ranked.prefix(config.tabs.recentCount).map(\.repository)
+    }
+
+    /// 全部侧栏仓库：按名称排序，包含当前仓库，不限制数量；按名称 / 路径筛选。
+    func sidebarRepositories(matching query: String = "") -> [SavedRepository] {
+        library.repositories.filter {
+            query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) ||
+                $0.path.localizedCaseInsensitiveContains(query)
+        }.sorted {
+            let order = $0.name.localizedStandardCompare($1.name)
+            return order == .orderedSame ? $0.path < $1.path : order == .orderedAscending
+        }
     }
 
     func reportOpenFailure(_ failure: Error, path: String) {
