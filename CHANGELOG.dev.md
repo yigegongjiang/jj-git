@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.35] - 2026-10-05
+
+### Added
+
+- 侧栏仓库与分组支持拖拽排序、插入位置提示和跨组移动；右键上移 / 下移，排序菜单恢复名称顺序，重启保留调整
+  - `SidebarDragDrop` 私有拖拽载荷 + 窗口令牌校验；`Workspace+Library` 按数组排序，`sidebarOrderCustomized` 缺失默认 false
+
 ## [0.4.34] - 2026-10-05
 
 ### Fixed

@@ -13,7 +13,7 @@
 
 安装位置: `/Applications/jj-git.app`;
 
-- 仓库: 打开 ⌘O / 扫描导入 ⇧⌘O / 最近仓库 ⌘P (按使用热度排序, 半衰期 3 天; 条数 `tabs.recentCount` 默认 15, 1–100; 输入筛选) / 分组 (折叠, 右键移动) / 多标签 ⌘W ⌘⌥←→ ⌃⇥; 标签页重启恢复
+- 仓库: 打开 ⌘O / 扫描导入 ⇧⌘O / 最近仓库 ⌘P (按使用热度排序, 半衰期 3 天; 条数 `tabs.recentCount` 默认 15, 1–100; 输入筛选) / 分组 (折叠, 拖入仓库 / 右键移动) / 仓库与分组排序 (拖拽, 插入线提示; 右键上移 / 下移; 顶部排序菜单恢复按名称, 自动保存) / 多标签 ⌘W ⌘⌥←→ ⌃⇥; 标签页重启恢复
 - 窗口: 无标题栏, 标签与窗口按钮同一行 (空白处拖动 / 双击缩放); 侧栏显示 / 隐藏 ⌃⌘S; 分割线均可拖动调整, 位置记忆
 - 切换: 历史 ⌘1 / 本地变更 ⌘2 / ⇥ 两者互切 (焦点在可编辑文本时不生效)
 - 历史 ⌘1: 提交图 + 详情 + 文件差异; 标题首列, 分支 / 标签第二列自动折行;「显示列」切换分支 / 标签、作者、时间、SHA (`history.showReferences/showAuthor/showTime/showHash`, 全局记忆); 时间本地时区 `yyyy-MM-dd HH:mm`,「精简时间」切换 `yyMMdd.HHmm` (`history.compactTime`, 默认 false, 全局记忆), 时间宽度随内容调整; 窄窗口元数据另起一行; 右键复制 SHA / 新建分支 / 新建标签
@@ -41,7 +41,7 @@
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) 设置 JSONC / 状态 JSON; 启动时读取; 配置解析失败使用默认值并提示, 状态解析失败停写
   - `config.jsonc`: 支持 `//` / `/* ... */` 注释 + 尾逗号, 逐键中文说明; 设置 (字体 / 差异行距 / 编辑器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔 / 命令记录); 缺失键取默认, 越界收敛
-  - `state.json`: 仓库列表 (含使用热度 `usage` / `usedAt`) / 分组 / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改需重启, 运行期间由 APP 写入
+  - `state.json`: 仓库列表 (含使用热度 `usage` / `usedAt`) / 分组 / 自定义排序 (`sidebarOrderCustomized`, true 时按数组顺序显示) / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改需重启, 运行期间由 APP 写入
   - `config.default.jsonc`: 全部键默认值 + 中文说明 / 单位 / 范围, 启动时刷新, 仅供查阅
   - `logs/<目录名>-<路径哈希>.log`: 每仓库 (工作目录) 的 Git 命令记录, 一行一条: 开始时间 / 耗时 ms / 结果 / stdout 字节 / 命令 (URL 凭据脱敏) / 失败信息; 异步写入; 超 `commandLog.maxFileMiB` 轮转为 `.log.1`; 配置监听忽略 `logs/`
 - MUST NOT 主动使用 `UserDefaults`: 窗口 / 分栏的 AppKit 自动保存已关闭, 改写 `state.json`

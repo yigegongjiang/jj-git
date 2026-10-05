@@ -2,6 +2,9 @@ import SwiftUI
 
 struct LibraryView: View {
     @Bindable var workspace: Workspace
+    @State private var draggedItem: SidebarItem?
+    @State private var dropTarget: SidebarDropTarget?
+    @State private var dragToken = UUID().uuidString
     @State private var newGroup = false
     @State private var editingGroup: RepositoryGroup?
 
@@ -13,6 +16,13 @@ struct LibraryView: View {
                     Text(tag).font(.ui(-2)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
+                Menu {
+                    Text("拖拽仓库或分组调整顺序")
+                    Divider()
+                    Button("按名称排序") { workspace.sortSidebarByName() }
+                } label: { Image(systemName: "arrow.up.arrow.down") }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .help("排序：拖拽仓库或分组调整顺序").accessibilityLabel("仓库与分组排序")
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
                     .buttonStyle(.plain).help("新建分组")
             }
@@ -20,8 +30,14 @@ struct LibraryView: View {
             ThemedDivider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
+                    if !workspace.library.groups.isEmpty {
+                        Text("未分组").font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 3)
+                            .modifier(dropDestination(.intoGroup(nil)))
+                    }
                     repositories(in: nil)
-                    ForEach(sortedGroups) { group in
+                    ForEach(workspace.orderedGroups) { group in
                         Section {
                             if !group.collapsed {
                                 repositories(in: group.id)
@@ -37,7 +53,12 @@ struct LibraryView: View {
                                 .foregroundStyle(.secondary).contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .onDrag { dragProvider(.group(group.id)) }
+                            .modifier(dropDestination(.group(group.id, after: false)))
+                            .help("拖拽调整分组顺序；拖入仓库移动到此分组")
                             .contextMenu {
+                                groupOrderMenu(group)
+                                Divider()
                                 Button("重命名分组") { editingGroup = group }
                                 Button("删除分组") { workspace.deleteGroup(group.id) }
                             }
@@ -75,52 +96,98 @@ struct LibraryView: View {
         }
     }
 
-    private var sortedGroups: [RepositoryGroup] {
-        workspace.library.groups.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
-
     private func repositories(in groupID: UUID?) -> some View {
-        ForEach(workspace.library.repositories.filter { $0.groupID == groupID }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { repository in
-                let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
-                HStack(spacing: 6) {
-                    repositoryIcon(repository)
-                    Button {
-                        Task { await workspace.open(repository.path) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(repository.name).lineLimit(1)
-                            Spacer(minLength: 0)
-                            if workspace.opening.contains(repository.path) {
-                                ProgressView().controlSize(.mini)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                }
-                .padding(.vertical, 3)
-                .foregroundStyle(marker?.color ?? (workspace.library.selectedPath == repository.path
-                        ? Theme.accent : Theme.foreground))
-                .background(workspace.library.selectedPath == repository.path
-                    ? Theme.accent.opacity(0.12) : .clear)
-                .help(repository.path)
-                .accessibilityValue(marker?.title ?? "默认颜色")
-                .contextMenu {
-                    Button("打开仓库") { Task { await workspace.open(repository.path) } }
-                    colorPicker(repository).pickerStyle(.menu)
-                    Menu("移动到分组") {
-                        Button("未分组") { workspace.move(repository.path, to: nil) }
-                        ForEach(workspace.library.groups) { group in
-                            Button(group.name) { workspace.move(repository.path, to: group.id) }
+        ForEach(workspace.orderedRepositories(in: groupID)) { repository in
+            let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
+            HStack(spacing: 6) {
+                repositoryIcon(repository)
+                Button {
+                    Task { await workspace.open(repository.path) }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(repository.name).lineLimit(1)
+                        Spacer(minLength: 0)
+                        if workspace.opening.contains(repository.path) {
+                            ProgressView().controlSize(.mini)
                         }
                     }
-                    Button("在终端打开") { workspace.openTerminal(repository.path) }
-                    Button("在编辑器打开") { workspace.openEditor(repository.path) }
-                    Divider()
-                    Button("从列表移除") { workspace.remove(repository.path) }
-                        .disabled(workspace.sessions[repository.path]?.operation != nil)
-                }
+                    .contentShape(Rectangle())
+                }.buttonStyle(.plain)
             }
+            .padding(.vertical, 3)
+            .foregroundStyle(marker?.color ?? (workspace.library.selectedPath == repository.path
+                    ? Theme.accent : Theme.foreground))
+            .background(workspace.library.selectedPath == repository.path
+                ? Theme.accent.opacity(0.12) : .clear)
+            .onDrag { dragProvider(.repository(repository.path)) }
+            .modifier(dropDestination(.repository(repository.path, after: false)))
+            .help("\(repository.path)\n拖拽调整顺序或移动到分组")
+            .accessibilityValue(marker?.title ?? "默认颜色")
+            .contextMenu {
+                Button("打开仓库") { Task { await workspace.open(repository.path) } }
+                repositoryOrderMenu(repository)
+                Divider()
+                colorPicker(repository).pickerStyle(.menu)
+                groupPicker(repository)
+                Button("在终端打开") { workspace.openTerminal(repository.path) }
+                Button("在编辑器打开") { workspace.openEditor(repository.path) }
+                Divider()
+                Button("从列表移除") { workspace.remove(repository.path) }
+                    .disabled(workspace.sessions[repository.path]?.operation != nil)
+            }
+        }
+    }
+
+    private func groupPicker(_ repository: SavedRepository) -> some View {
+        Menu("移动到分组") {
+            Button("未分组") { workspace.move(repository.path, to: nil) }
+            ForEach(workspace.orderedGroups) { group in
+                Button(group.name) { workspace.move(repository.path, to: group.id) }
+            }
+        }
+    }
+
+    private func dragProvider(_ item: SidebarItem) -> NSItemProvider {
+        draggedItem = item
+        dropTarget = nil
+        let provider = NSItemProvider()
+        let payload = Data("\(dragToken)\n\(item.payload)".utf8)
+        provider.registerDataRepresentation(
+            forTypeIdentifier: SidebarDropModifier.type.identifier, visibility: .ownProcess
+        ) { completion in
+            completion(payload, nil)
+            return nil
+        }
+        return provider
+    }
+
+    private func dropDestination(_ destination: SidebarDropTarget) -> SidebarDropModifier {
+        SidebarDropModifier(destination: destination, draggedItem: $draggedItem, target: $dropTarget,
+                            token: dragToken, workspace: workspace)
+    }
+
+    @ViewBuilder
+    private func repositoryOrderMenu(_ repository: SavedRepository) -> some View {
+        let items = workspace.orderedRepositories(in: repository.groupID)
+        let index = items.firstIndex(where: { $0.path == repository.path }) ?? 0
+        Button("上移") {
+            workspace.reorderRepository(repository.path, relativeTo: items[index - 1].path, after: false)
+        }.disabled(index == 0)
+        Button("下移") {
+            workspace.reorderRepository(repository.path, relativeTo: items[index + 1].path, after: true)
+        }.disabled(index + 1 >= items.count)
+    }
+
+    @ViewBuilder
+    private func groupOrderMenu(_ group: RepositoryGroup) -> some View {
+        let items = workspace.orderedGroups
+        let index = items.firstIndex(where: { $0.id == group.id }) ?? 0
+        Button("上移") {
+            workspace.reorderGroup(group.id, relativeTo: items[index - 1].id, after: false)
+        }.disabled(index == 0)
+        Button("下移") {
+            workspace.reorderGroup(group.id, relativeTo: items[index + 1].id, after: true)
+        }.disabled(index + 1 >= items.count)
     }
 
     private func repositoryIcon(_ repository: SavedRepository) -> some View {

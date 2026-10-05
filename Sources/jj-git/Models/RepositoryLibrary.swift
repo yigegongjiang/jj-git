@@ -52,6 +52,8 @@ struct SavedRepository: Identifiable, Codable, Equatable, Sendable {
 struct RepositoryLibrary: Codable, Sendable {
     var repositories: [SavedRepository] = []
     var groups: [RepositoryGroup] = []
+    /// false 按名称显示；首次调整后以数组顺序显示。
+    var sidebarOrderCustomized = false
     var tabs: [String] = []
     var selectedPath: String?
     var sidebarHidden = false
