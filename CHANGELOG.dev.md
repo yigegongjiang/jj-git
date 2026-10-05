@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.44] - 2026-10-05
+
+### Fixed
+
+- 全部差异 / 大文件差异读取完成后立即显示，不再因长行换行计算长时间空白
+  - `DiffTableCoordinator` 换行行高: 首屏同步实测, 其余 `estimatedHeight` 占位 + 8ms 分片补算, 首个可见行锚定防跳动
+
 ## [0.4.43] - 2026-10-05
 
 ### Changed
