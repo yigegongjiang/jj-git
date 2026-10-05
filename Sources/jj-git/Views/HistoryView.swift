@@ -110,7 +110,7 @@ private struct CommitGraphPanel: View {
                         historyRow(row).tag(row.id)
                             .listRowBackground(selection == row.id ? nil :
                                 Theme.titleBar.opacity(index.isMultiple(of: 2) ? 0 : 0.35).background(Theme.window))
-                            .accessibilityRow(accessibilityLabel(row.commit)) { selection = row.id }
+                            .accessibilityRow(commitLabel(row.commit)) { selection = row.id }
                             .accessibilityIdentifier("history.commit")
                             .menuActions([[
                                 MenuAction(title: "复制 SHA") { copy(row.commit.hash) },
@@ -149,7 +149,7 @@ private struct CommitGraphPanel: View {
     }
 
     /// 主题 / 引用 / 作者 / 时间 / SHA，不受显示列开关影响。
-    private func accessibilityLabel(_ commit: GitCommit) -> String {
+    private func commitLabel(_ commit: GitCommit) -> String {
         [commit.subject, commit.decorations, commit.author, Self.timeFormatter.string(from: commit.date),
          commit.shortHash].filter { !$0.isEmpty }.joined(separator: "，")
     }
