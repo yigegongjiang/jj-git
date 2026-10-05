@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.24] - 2026-10-05
+
+### Fixed
+
+- 仓库位于频繁写入的目录（如主目录）时，后台持续刷新导致 CPU 居高：变更合并为每秒最多刷新一次
+  - `RepositoryMonitor` FSEvents latency 0.2 → 1.0 秒；主目录仓库实测 30 秒内 Git 命令 2430 → 351，App CPU 29% → 7% (Debug)
+- 「性能」面板读数不再包含面板自身的开销，与未打开面板时一致
+  - `ContentView` 弹窗前采样内存传入 `PerformanceView`；CPU 窗口延后 0.5 秒避开弹窗动画，结果在窗口结束后一次性写入界面
+
 ## [0.4.23] - 2026-10-05
 
 ### Changed
