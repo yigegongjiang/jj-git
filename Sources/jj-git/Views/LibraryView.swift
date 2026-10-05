@@ -254,7 +254,7 @@ struct SidebarToggle: View {
     var body: some View {
         Button { workspace.toggleSidebar() } label: { Image(systemName: "sidebar.left") }
             .buttonStyle(.plain).foregroundStyle(.secondary)
-            .help(workspace.library.sidebarHidden ? "显示侧边栏 ⌃⌘S" : "隐藏侧边栏 ⌃⌘S")
+            .help(workspace.library.sidebarHidden ? "显示侧边栏 ⇧⌘S" : "隐藏侧边栏 ⇧⌘S")
     }
 }
 

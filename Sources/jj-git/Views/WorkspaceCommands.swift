@@ -39,7 +39,7 @@ struct WorkspaceCommands: Commands {
         }
         CommandGroup(replacing: .sidebar) {
             Button(workspace.library.sidebarHidden ? "显示侧边栏" : "隐藏侧边栏") { workspace.toggleSidebar() }
-                .keyboardShortcut("s", modifiers: [.control, .command])
+                .keyboardShortcut("s", modifiers: [.command, .shift])
         }
         CommandMenu("仓库") {
             Button("刷新") { workspace.selected?.refresh(forceHistory: true) }.keyboardShortcut("r")

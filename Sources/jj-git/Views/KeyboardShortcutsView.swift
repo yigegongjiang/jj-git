@@ -74,7 +74,7 @@ struct KeyboardShortcutsView: View {
             Shortcut("关闭仓库标签", "⌘W", detail: "当前仓库无操作进行时"),
             Shortcut("下一个仓库标签", "⌘⌥→ / ⌃Tab", searchTerms: "right tab"),
             Shortcut("上一个仓库标签", "⌘⌥← / ⇧⌃Tab", searchTerms: "left tab"),
-            Shortcut("显示 / 隐藏侧边栏", "⌃⌘S"),
+            Shortcut("显示 / 隐藏侧边栏", "⇧⌘S"),
             Shortcut("打开配置文件", "⌘,"),
             Shortcut("查看快捷键", "⇧⌘/", searchTerms: "help")
         ]),
