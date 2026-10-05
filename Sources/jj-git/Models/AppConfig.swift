@@ -29,6 +29,11 @@ struct AppConfig: Codable, Equatable, Sendable {
         var outputLimitMiB = 16
     }
 
+    struct Commit: Codable, Equatable, Sendable {
+        /// 提交信息输入框的初始内容，提交后恢复；为空不预填。
+        var defaultMessage = ""
+    }
+
     struct Pull: Codable, Equatable, Sendable {
         var rebase = true
         var autostash = true
@@ -87,6 +92,7 @@ struct AppConfig: Codable, Equatable, Sendable {
     var fileManager = FileBrowser()
     var terminal = Terminal()
     var git = Git()
+    var commit = Commit()
     var pull = Pull()
     var history = History()
     var diff = Diff()
@@ -112,6 +118,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.git.commitTimeoutSeconds = git.commitTimeoutSeconds.clamped(1...3600)
         value.git.networkTimeoutSeconds = git.networkTimeoutSeconds.clamped(1...3600)
         value.git.outputLimitMiB = git.outputLimitMiB.clamped(1...512)
+        value.commit.defaultMessage = commit.defaultMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         value.history.initialCount = history.initialCount.clamped(50...100_000)
         value.history.pageSize = history.pageSize.clamped(50...100_000)
         value.diff.contextLines = diff.contextLines.clamped(1...20)

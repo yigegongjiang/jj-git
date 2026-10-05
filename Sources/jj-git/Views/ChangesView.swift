@@ -266,7 +266,7 @@ struct CommitComposer: View {
         let target = destination ?? PushDestination(session: session)
         let amend = session.amend
         session.perform(.commit(message: session.message, amend: amend), title: amend ? "Amend" : "提交") {
-            session.message = ""
+            session.message = AppConfig.current.commit.defaultMessage
             session.amend = false
             if push {
                 session.perform(.push(remote: target.remote, branch: target.branch, lease: amend ? target.lease : nil),

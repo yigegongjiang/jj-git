@@ -283,7 +283,7 @@ extension Workspace {
     }
 
     var canRestart: Bool {
-        !scanning && opening.isEmpty && sessions.values.allSatisfy { $0.operation == nil && $0.message.isEmpty }
+        !scanning && opening.isEmpty && sessions.values.allSatisfy { $0.operation == nil && $0.messageUntouched }
     }
 
     /// 仅重启当前产物；等待旧进程退出，避免两个实例同时写入状态。

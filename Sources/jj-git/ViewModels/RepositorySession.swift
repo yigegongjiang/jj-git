@@ -32,7 +32,7 @@ final class RepositorySession: Identifiable {
     /// 文件行定位按钮的请求；其他导航清除，避免差异视图重建后重放。
     var diffReveal: DiffReveal?
     var selectedLines: Set<Int> = []
-    var message = ""
+    var message = AppConfig.current.commit.defaultMessage
     var amend = false
     var section = RepositorySection.changes
     var error: String?
@@ -372,20 +372,6 @@ extension RepositorySession {
 
     func cancelOperation() {
         operationTask?.cancel()
-    }
-
-    func setAmend(_ enabled: Bool) {
-        amend = enabled
-        guard enabled, message.isEmpty else { return }
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                let previous = try await command.query.lastMessage()
-                if amend, message.isEmpty {
-                    message = previous
-                }
-            } catch { self.error = error.localizedDescription }
-        }
     }
 }
 

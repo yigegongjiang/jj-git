@@ -103,6 +103,8 @@ enum ConfigStore {
         "commitTimeoutSeconds": "提交超时（秒，含 hooks），1–3600。",
         "networkTimeoutSeconds": "网络命令超时（秒），1–3600。",
         "outputLimitMiB": "单次命令输出上限（MiB），1–512。",
+        "commit": "提交信息",
+        "defaultMessage": "提交信息输入框默认内容，提交后恢复；空值不预填。",
         "pull": "Pull 行为",
         "rebase": "true 使用 rebase；false 使用 merge。",
         "autostash": "Pull 时临时保存未提交修改，结束后恢复。",
