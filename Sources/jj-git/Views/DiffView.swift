@@ -41,6 +41,13 @@ struct DiffView: View {
                               scrollTarget: session.diffScrollID, actions: actions)
             }
         }
+        .dismissConfirmationOnBackgroundClick(isPresented: Binding(
+            get: { discarding != nil }, set: {
+                if !$0 {
+                    discarding = nil
+                }
+            }
+        ))
         .confirmationDialog("放弃选中的变更？", isPresented: Binding(
             get: { discarding != nil }, set: {
                 if !$0 {

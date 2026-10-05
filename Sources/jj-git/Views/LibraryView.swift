@@ -67,9 +67,11 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $newGroup) {
             NamePrompt(title: "新建仓库分组", initial: "") { workspace.addGroup($0) }
+                .dismissOnBackgroundClick()
         }
         .sheet(item: $editingGroup) { group in
             NamePrompt(title: "重命名分组", initial: group.name) { workspace.renameGroup(group.id, name: $0) }
+                .dismissOnBackgroundClick()
         }
     }
 

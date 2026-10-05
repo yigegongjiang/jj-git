@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.30] - 2026-10-05
+
+### Added
+
+- 弹窗支持点击背景区域取消，保留 Esc 取消；取消时不会触发背景操作
+  - `SheetBackgroundDismiss` 统一 sheet / confirmationDialog 取消；限定所属窗口、保护嵌套弹窗、拦截点击并随呈现释放监听
+
 ## [0.4.29] - 2026-10-05
 
 ### Changed

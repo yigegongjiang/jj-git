@@ -103,6 +103,13 @@ struct ChangeList: View {
                 }
             }
         }
+        .dismissConfirmationOnBackgroundClick(isPresented: Binding(
+            get: { !discarding.isEmpty }, set: {
+                if !$0 {
+                    discarding = []
+                }
+            }
+        ))
         .confirmationDialog("放弃未暂存变更？", isPresented: Binding(
             get: { !discarding.isEmpty }, set: {
                 if !$0 {
@@ -198,6 +205,7 @@ struct CommitComposer: View {
                 .disabled(!canCommit || session.remotes.isEmpty || session.status.detached)
             }.controlSize(.small)
         }.padding(10)
+            .dismissConfirmationOnBackgroundClick(isPresented: $confirmAmendPush)
             .confirmationDialog("Amend 并强制推送？", isPresented: $confirmAmendPush, titleVisibility: .visible) {
                 Button("Amend 并推送", role: .destructive) { submit(push: true, destination: destination) }
                 Button("取消", role: .cancel) {

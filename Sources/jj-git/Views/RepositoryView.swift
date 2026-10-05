@@ -44,7 +44,9 @@ struct RepositoryView: View {
             ThemedDivider()
             statusBar
         }
-        .sheet(item: $dialog) { ActionDialog(dialog: $0, session: session).themed() }
+        .sheet(item: $dialog) {
+            ActionDialog(dialog: $0, session: session).themed().dismissOnBackgroundClick()
+        }
     }
 
     private var toolbar: some View {

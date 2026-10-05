@@ -23,7 +23,7 @@ struct ContentView: View {
         .background(WindowFrameKeeper(workspace: workspace))
         .background(SectionTabKey(workspace: workspace))
         .sheet(isPresented: $workspace.showingKeyboardShortcuts) {
-            KeyboardShortcutsView().themed()
+            KeyboardShortcutsView().themed().dismissOnBackgroundClick()
         }
         .task {
             await workspace.restore()
@@ -35,10 +35,12 @@ struct ContentView: View {
             workspace.selected?.refresh()
             workspace.checkMissingRepositories()
         }
-        .sheet(isPresented: $workspace.showingRecent) { RecentRepositoriesView(workspace: workspace) }
+        .sheet(isPresented: $workspace.showingRecent) {
+            RecentRepositoriesView(workspace: workspace).dismissOnBackgroundClick()
+        }
         // 用 sheet：popover 弹出动画会让内存瞬时上涨约 130 MB，测量会把它算进去。
         .sheet(isPresented: $showingPerformance) {
-            PerformanceView(workspace: workspace, baseline: performanceBaseline)
+            PerformanceView(workspace: workspace, baseline: performanceBaseline).dismissOnBackgroundClick()
         }
     }
 
