@@ -52,11 +52,15 @@ struct ChangeList: View {
                         Image(systemName: staged ? "chevron.up" : "chevron.down")
                     }
                     .help(staged ? "取消暂存选中 (空格)" : "暂存选中 (空格)")
+                    .accessibilityLabel(staged ? "取消暂存选中" : "暂存选中")
+                    .accessibilityIdentifier("\(listID).transfer-selected")
                     .disabled(selectedFiles.isEmpty || session.operation != nil)
                     Button { transfer(files) } label: {
                         Image(systemName: staged ? "chevron.up.2" : "chevron.down.2")
                     }
                     .help(staged ? "全部取消暂存" : "全部暂存")
+                    .accessibilityLabel(staged ? "全部取消暂存" : "全部暂存")
+                    .accessibilityIdentifier("\(listID).transfer-all")
                     .disabled(files.isEmpty || session.operation != nil)
                 }.buttonStyle(.borderless).font(.ui(weight: .semibold))
             }
@@ -68,26 +72,30 @@ struct ChangeList: View {
             } else {
                 List(selection: $selection) {
                     ForEach(files) { file in
+                        let status = file.conflicted ? "!" : String(staged ? file.index : file.worktree)
                         HStack(spacing: 6) {
-                            Text(file.conflicted ? "!" : String(staged ? file.index : file.worktree))
+                            Text(status)
                                 .font(.mono(-1, weight: .bold))
                                 .foregroundStyle(file.conflicted ? Theme.deleted : Color.secondary).frame(width: 14)
                             Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
                             Spacer(minLength: 0)
                             if overviewActive {
-                                RevealButton {
-                                    selection = []
-                                    session.revealChange(file, staged: staged)
-                                }
+                                RevealButton { reveal(file) }
                             }
                         }
+                        .accessibilityRow("\(status) \(file.path)") { selection = [file.id] }
+                        .accessibilityMenuActions(
+                            (overviewActive ? [MenuAction(title: "在全部差异中定位") { reveal(file) }] : [])
+                                + fileActions([file]).flatMap(\.self)
+                        )
                         .tag(file.id).help(file.path)
                     }
                 }
                 .listStyle(.plain).scrollContentBackground(.hidden)
+                .accessibilityIdentifier(listID)
                 // 双击 / 回车 / 空格暂存或取消暂存；右键作用于选中文件。
                 .contextMenu(forSelectionType: String.self) { ids in
-                    contextMenu(files.filter { ids.contains($0.id) })
+                    MenuActionGroups(groups: fileActions(files.filter { ids.contains($0.id) }))
                 } primaryAction: { ids in
                     transfer(files.filter { ids.contains($0.id) })
                 }
@@ -139,25 +147,36 @@ struct ChangeList: View {
         }
     }
 
-    @ViewBuilder
-    private func contextMenu(_ targets: [FileChange]) -> some View {
-        if !targets.isEmpty {
-            Button(staged ? "取消暂存" : "暂存") { transfer(targets) }
-                .disabled(session.operation != nil)
-            if !staged {
-                Button("放弃未暂存变更…") { discarding = targets }
-                    .disabled(targets.contains { $0.conflicted || $0.submodule } || session.operation != nil)
-                if targets.count == 1, let file = targets.first, file.untracked {
-                    Button("加入 .gitignore") { session.perform(.ignore(file.path), title: "忽略文件") }
-                        .disabled(session.operation != nil)
-                }
-            }
-            if targets.count == 1, let file = targets.first {
-                Divider()
-                Button("在编辑器打开") { workspace.openEditor(session.location.root + "/" + file.path) }
-                Button("在文件夹中显示") { workspace.revealInFileManager(session.location.root + "/" + file.path) }
+    private var listID: String {
+        staged ? "changes.staged" : "changes.unstaged"
+    }
+
+    private func fileActions(_ targets: [FileChange]) -> [[MenuAction]] {
+        guard !targets.isEmpty else { return [] }
+        let idle = session.operation == nil
+        var actions = [MenuAction(title: staged ? "取消暂存" : "暂存", enabled: idle) { transfer(targets) }]
+        if !staged {
+            actions.append(MenuAction(title: "放弃未暂存变更…",
+                                      enabled: idle && !targets.contains { $0.conflicted || $0.submodule }) {
+                    discarding = targets
+                })
+            if targets.count == 1, let file = targets.first, file.untracked {
+                actions.append(MenuAction(title: "加入 .gitignore", enabled: idle) {
+                    session.perform(.ignore(file.path), title: "忽略文件")
+                })
             }
         }
+        guard targets.count == 1, let file = targets.first else { return [actions] }
+        let path = session.location.root + "/" + file.path
+        return [actions, [
+            MenuAction(title: "在编辑器打开") { workspace.openEditor(path) },
+            MenuAction(title: "在文件夹中显示") { workspace.revealInFileManager(path) }
+        ]]
+    }
+
+    private func reveal(_ file: FileChange) {
+        selection = []
+        session.revealChange(file, staged: staged)
     }
 
     private func showOverview() {
@@ -202,18 +221,20 @@ struct CommitComposer: View {
                 Toggle("Amend", isOn: Binding(get: { session.amend }, set: { session.setAmend($0) }))
                     .toggleStyle(.checkbox).font(.ui(-2))
                     .disabled(session.status.unborn || session.operation != nil)
+                    .accessibilityIdentifier("commit.amend")
             }
             TextEditor(text: $session.message)
                 .font(.code()).scrollContentBackground(.hidden)
                 .padding(4).background(Theme.window).overlay(Rectangle().stroke(Theme.border))
                 .frame(minHeight: 60, maxHeight: .infinity)
-                .accessibilityLabel("提交信息")
+                .accessibilityLabel("提交信息").accessibilityIdentifier("commit.message")
             if session.status.conflicts {
                 Text("存在冲突，请解决后暂存。").font(.ui(-2)).foregroundStyle(Theme.orange)
             }
             HStack {
                 Button(session.amend ? "Amend" : "提交") { submit(push: false) }
                     .keyboardShortcut(.return, modifiers: [.command]).disabled(!canCommit)
+                    .accessibilityIdentifier("commit.submit")
                 Spacer(minLength: 4)
                 Button(session.amend ? "Amend 并推送" : "提交并推送") {
                     let target = PushDestination(session: session)
@@ -227,6 +248,7 @@ struct CommitComposer: View {
                 }
                 .keyboardShortcut(.return, modifiers: [.command, .option])
                 .disabled(!canCommit || session.remotes.isEmpty || session.status.detached)
+                .accessibilityIdentifier("commit.submit-push")
             }.controlSize(.small)
         }.padding(10)
             .dismissConfirmationOnBackgroundClick(isPresented: $confirmAmendPush)

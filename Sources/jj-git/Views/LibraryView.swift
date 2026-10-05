@@ -24,7 +24,7 @@ struct LibraryView: View {
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .help("排序：拖拽仓库或分组调整顺序").accessibilityLabel("仓库与分组排序")
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
-                    .buttonStyle(.plain).help("新建分组")
+                    .buttonStyle(.plain).help("新建分组").accessibilityLabel("新建分组")
             }
             .background(Theme.titleBar)
             ThemedDivider()
@@ -53,15 +53,15 @@ struct LibraryView: View {
                                 .foregroundStyle(.secondary).contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("分组 \(group.name)")
+                            .accessibilityValue(group.collapsed ? "已折叠" : "已展开")
                             .onDrag { dragProvider(.group(group.id)) }
                             .modifier(dropDestination(.group(group.id, after: false)))
                             .help("拖拽调整分组顺序；拖入仓库移动到此分组")
-                            .contextMenu {
-                                groupOrderMenu(group)
-                                Divider()
-                                Button("重命名分组") { editingGroup = group }
-                                Button("删除分组") { workspace.deleteGroup(group.id) }
-                            }
+                            .menuActions([groupOrderActions(group), [
+                                MenuAction(title: "重命名分组") { editingGroup = group },
+                                MenuAction(title: "删除分组") { workspace.deleteGroup(group.id) }
+                            ]])
                         }
                     }
                 }
@@ -80,10 +80,11 @@ struct LibraryView: View {
             ThemedDivider()
             HStack {
                 Button { workspace.chooseRepository() } label: { Label("打开", systemImage: "folder") }
+                    .accessibilityIdentifier("library.open")
                 Spacer()
                 Button { workspace.chooseRepository(scan: true) } label: {
                     Label("扫描", systemImage: "magnifyingglass")
-                }.disabled(workspace.scanning)
+                }.disabled(workspace.scanning).accessibilityIdentifier("library.scan")
             }.buttonStyle(.borderless).padding(10)
         }
         .sheet(isPresented: $newGroup) {
@@ -99,6 +100,7 @@ struct LibraryView: View {
     private func repositories(in groupID: UUID?) -> some View {
         ForEach(workspace.orderedRepositories(in: groupID)) { repository in
             let marker = repository.color.flatMap(RepositoryColor.init(rawValue:))
+            let selected = workspace.library.selectedPath == repository.path
             HStack(spacing: 6) {
                 repositoryIcon(repository)
                 Button {
@@ -113,38 +115,49 @@ struct LibraryView: View {
                     }
                     .contentShape(Rectangle())
                 }.buttonStyle(.plain)
+                    .accessibilityLabel(repository.name)
+                    .accessibilityValue((selected ? "当前标签，" : "") + (marker?.title ?? "默认颜色"))
+                    .accessibilityHint(repository.path)
+                    .accessibilityMenuActions(repositoryActions(repository).flatMap(\.self)
+                        + moveActions(repository, prefix: "移动到分组："))
             }
             .padding(.vertical, 3)
-            .foregroundStyle(marker?.color ?? (workspace.library.selectedPath == repository.path
-                    ? Theme.accent : Theme.foreground))
-            .background(workspace.library.selectedPath == repository.path
-                ? Theme.accent.opacity(0.12) : .clear)
+            .foregroundStyle(marker?.color ?? (selected ? Theme.accent : Theme.foreground))
+            .background(selected ? Theme.accent.opacity(0.12) : .clear)
             .onDrag { dragProvider(.repository(repository.path)) }
             .modifier(dropDestination(.repository(repository.path, after: false)))
             .help("\(repository.path)\n拖拽调整顺序或移动到分组")
-            .accessibilityValue(marker?.title ?? "默认颜色")
             .contextMenu {
-                Button("打开仓库") { Task { await workspace.open(repository.path) } }
-                repositoryOrderMenu(repository)
+                let groups = repositoryActions(repository)
+                MenuActionGroups(groups: [groups[0]])
                 Divider()
                 colorPicker(repository).pickerStyle(.menu)
-                groupPicker(repository)
-                Button("在终端打开") { workspace.openTerminal(repository.path) }
-                Button("在编辑器打开") { workspace.openEditor(repository.path) }
-                Divider()
-                Button("从列表移除") { workspace.remove(repository.path) }
-                    .disabled(workspace.sessions[repository.path]?.operation != nil)
+                Menu("移动到分组") { MenuActionGroups(groups: [moveActions(repository, prefix: "")]) }
+                MenuActionGroups(groups: Array(groups[1...]))
             }
         }
     }
 
-    private func groupPicker(_ repository: SavedRepository) -> some View {
-        Menu("移动到分组") {
-            Button("未分组") { workspace.move(repository.path, to: nil) }
-            ForEach(workspace.orderedGroups) { group in
-                Button(group.name) { workspace.move(repository.path, to: group.id) }
+    /// 打开 + 排序 / 外部工具 / 移除；颜色与分组单独渲染（颜色由图标菜单暴露给辅助功能）。
+    private func repositoryActions(_ repository: SavedRepository) -> [[MenuAction]] {
+        [
+            [MenuAction(title: "打开仓库") { Task { await workspace.open(repository.path) } }]
+                + repositoryOrderActions(repository),
+            [
+                MenuAction(title: "在终端打开") { workspace.openTerminal(repository.path) },
+                MenuAction(title: "在编辑器打开") { workspace.openEditor(repository.path) }
+            ],
+            [MenuAction(title: "从列表移除", enabled: workspace.sessions[repository.path]?.operation == nil) {
+                workspace.remove(repository.path)
+            }]
+        ]
+    }
+
+    private func moveActions(_ repository: SavedRepository, prefix: String) -> [MenuAction] {
+        [MenuAction(title: prefix + "未分组") { workspace.move(repository.path, to: nil) }]
+            + workspace.orderedGroups.map { group in
+                MenuAction(title: prefix + group.name) { workspace.move(repository.path, to: group.id) }
             }
-        }
     }
 
     private func dragProvider(_ item: SidebarItem) -> NSItemProvider {
@@ -166,28 +179,30 @@ struct LibraryView: View {
                             token: dragToken, workspace: workspace)
     }
 
-    @ViewBuilder
-    private func repositoryOrderMenu(_ repository: SavedRepository) -> some View {
+    private func repositoryOrderActions(_ repository: SavedRepository) -> [MenuAction] {
         let items = workspace.orderedRepositories(in: repository.groupID)
         let index = items.firstIndex(where: { $0.path == repository.path }) ?? 0
-        Button("上移") {
-            workspace.reorderRepository(repository.path, relativeTo: items[index - 1].path, after: false)
-        }.disabled(index == 0)
-        Button("下移") {
-            workspace.reorderRepository(repository.path, relativeTo: items[index + 1].path, after: true)
-        }.disabled(index + 1 >= items.count)
+        return [
+            MenuAction(title: "上移", enabled: index > 0) {
+                workspace.reorderRepository(repository.path, relativeTo: items[index - 1].path, after: false)
+            },
+            MenuAction(title: "下移", enabled: index + 1 < items.count) {
+                workspace.reorderRepository(repository.path, relativeTo: items[index + 1].path, after: true)
+            }
+        ]
     }
 
-    @ViewBuilder
-    private func groupOrderMenu(_ group: RepositoryGroup) -> some View {
+    private func groupOrderActions(_ group: RepositoryGroup) -> [MenuAction] {
         let items = workspace.orderedGroups
         let index = items.firstIndex(where: { $0.id == group.id }) ?? 0
-        Button("上移") {
-            workspace.reorderGroup(group.id, relativeTo: items[index - 1].id, after: false)
-        }.disabled(index == 0)
-        Button("下移") {
-            workspace.reorderGroup(group.id, relativeTo: items[index + 1].id, after: true)
-        }.disabled(index + 1 >= items.count)
+        return [
+            MenuAction(title: "上移", enabled: index > 0) {
+                workspace.reorderGroup(group.id, relativeTo: items[index - 1].id, after: false)
+            },
+            MenuAction(title: "下移", enabled: index + 1 < items.count) {
+                workspace.reorderGroup(group.id, relativeTo: items[index + 1].id, after: true)
+            }
+        ]
     }
 
     private func repositoryIcon(_ repository: SavedRepository) -> some View {
@@ -255,6 +270,8 @@ struct SidebarToggle: View {
         Button { workspace.toggleSidebar() } label: { Image(systemName: "sidebar.left") }
             .buttonStyle(.plain).foregroundStyle(.secondary)
             .help(workspace.library.sidebarHidden ? "显示侧边栏 ⇧⌘S" : "隐藏侧边栏 ⇧⌘S")
+            .accessibilityLabel(workspace.library.sidebarHidden ? "显示侧边栏" : "隐藏侧边栏")
+            .accessibilityIdentifier("sidebar.toggle")
     }
 }
 
@@ -267,20 +284,26 @@ struct RepositoryTabs: View {
                 HStack(spacing: 0) {
                     ForEach(workspace.library.tabs, id: \.self) { path in
                         let mounted = workspace.sessions[path] != nil
+                        let name = URL(fileURLWithPath: path).lastPathComponent
                         HStack(spacing: 8) {
                             Button { workspace.select(path) } label: {
                                 HStack(spacing: 5) {
                                     if workspace.sessions[path]?.operation != nil {
                                         ProgressView().controlSize(.mini)
                                     }
-                                    Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(1)
+                                    Text(name).lineLimit(1)
                                         .foregroundStyle(mounted ? Theme.foreground : Theme.badge)
                                 }
                             }.buttonStyle(.plain)
+                                .accessibilityLabel(name).accessibilityIdentifier("tab")
+                                .accessibilityValue(workspace.library.selectedPath == path ? "当前标签"
+                                    : mounted ? "" : "未挂载")
+                                .accessibilityAddTraits(workspace.library.selectedPath == path ? .isSelected : [])
+                                .accessibilityHint(path)
                             Button { workspace.close(path) } label: {
                                 Image(systemName: "xmark").font(.ui(-3))
                             }
-                            .buttonStyle(.plain).help("关闭标签 ⌘W")
+                            .buttonStyle(.plain).help("关闭标签 ⌘W").accessibilityLabel("关闭 \(name)")
                             .disabled(workspace.sessions[path]?.operation != nil)
                         }
                         .padding(.horizontal, 12).frame(height: 32)
@@ -298,91 +321,5 @@ struct RepositoryTabs: View {
                 .frame(minWidth: proxy.size.width, alignment: .leading).windowDragArea()
             }.scrollIndicators(.hidden)
         }.frame(height: 32)
-    }
-}
-
-/// 仓库检索：输入筛选，↑↓ 选择，回车打开，Esc 关闭。
-struct RepositoryPickerView: View {
-    let workspace: Workspace
-    var allRepositories = false
-    @State private var query = ""
-    @State private var index = 0
-    @FocusState private var focused: Bool
-    @Environment(\.dismiss) private var dismiss
-
-    private var repositories: [SavedRepository] {
-        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if allRepositories {
-            return workspace.sidebarRepositories(matching: term)
-        }
-        return workspace.recentRepositories(matching: term)
-    }
-
-    var body: some View {
-        let items = repositories
-        VStack(spacing: 0) {
-            TextField(allRepositories ? "全部仓库（输入名称或路径筛选）" : "最近仓库（输入名称筛选）", text: $query)
-                .textFieldStyle(.plain).font(.ui(1)).padding(10)
-                .focused($focused)
-                .onSubmit { open(items) }
-                .onKeyPress(.upArrow) { move(-1, count: items.count) }
-                .onKeyPress(.downArrow) { move(1, count: items.count) }
-                .onKeyPress(.escape) {
-                    dismiss()
-                    return .handled
-                }
-            ThemedDivider()
-            if items.isEmpty {
-                Text(query.isEmpty ? (allRepositories ? "没有仓库" : "没有其他仓库") : "无匹配仓库")
-                    .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(16)
-            } else {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            ForEach(Array(items.enumerated()), id: \.element.id) { offset, repository in
-                                row(repository, selected: offset == index).id(offset)
-                                    .onTapGesture {
-                                        index = offset
-                                        open(items)
-                                    }
-                            }
-                        }.padding(.vertical, 4)
-                    }
-                    .frame(maxHeight: 520).fixedSize(horizontal: false, vertical: true)
-                    .onChange(of: index) { _, value in proxy.scrollTo(value) }
-                }
-            }
-        }
-        .frame(width: 520).themed()
-        .onAppear { focused = true }
-        .onChange(of: query) { _, _ in index = 0 }
-    }
-
-    private func row(_ repository: SavedRepository, selected: Bool) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "folder").foregroundStyle(.secondary)
-            Text(repository.name).lineLimit(1)
-                .foregroundStyle(workspace.library.tabs.contains(repository.path) ? Theme.foreground : Theme.badge)
-            Spacer(minLength: 12)
-            Text((repository.path as NSString).abbreviatingWithTildeInPath).foregroundStyle(.secondary)
-                .font(.ui(-2)).lineLimit(1).truncationMode(.middle)
-        }
-        .padding(.horizontal, 10).padding(.vertical, 5)
-        .background(selected ? Theme.accent.opacity(0.2) : .clear)
-        .contentShape(Rectangle())
-        .help(repository.path)
-    }
-
-    private func move(_ offset: Int, count: Int) -> KeyPress.Result {
-        guard count > 0 else { return .handled }
-        index = (index + offset + count) % count
-        return .handled
-    }
-
-    private func open(_ items: [SavedRepository]) {
-        guard items.indices.contains(index) else { return }
-        let path = items[index].path
-        dismiss()
-        Task { await workspace.open(path) }
     }
 }

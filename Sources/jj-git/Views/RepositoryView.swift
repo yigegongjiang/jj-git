@@ -54,15 +54,19 @@ struct RepositoryView: View {
             Label(session.status.detached ? String(session.status.head.prefix(8)) : session.status.branch,
                   systemImage: "arrow.triangle.branch")
                 .font(.ui(weight: .semibold)).lineLimit(1).help(session.location.root)
+                .accessibilityIdentifier("toolbar.branch")
             Text("↑\(session.status.ahead) ↓\(session.status.behind)").font(.ui(-2)).foregroundStyle(.secondary)
+                .accessibilityLabel("领先 \(session.status.ahead)，落后 \(session.status.behind)")
+                .accessibilityIdentifier("toolbar.ahead-behind")
             Spacer(minLength: 5)
             Button { session.fetch() } label: { transferLabel("Fetch", systemImage: "arrow.down.to.line", .fetch) }
                 .disabled(session.remotes.isEmpty || session.operation != nil)
+                .accessibilityIdentifier("toolbar.fetch")
             Button { session.perform(.pull, title: "Pull") } label: {
                 transferLabel("Pull", systemImage: "arrow.down", .pull)
             }
             .disabled(session.status.upstream.isEmpty || session.operation != nil)
-            .help(pullHelp)
+            .help(pullHelp).accessibilityIdentifier("toolbar.pull")
             // Menu 标签不渲染 ProgressView，进度指示放在菜单前。
             if session.operationAction?.transfer == .push {
                 ProgressView().controlSize(.mini)
@@ -72,15 +76,17 @@ struct RepositoryView: View {
                 Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }
             } label: { Label("Push", systemImage: "arrow.up") }
                 .fixedSize().disabled(session.remotes.isEmpty || session.status.detached || session.operation != nil)
+                .accessibilityIdentifier("toolbar.push")
             ThemedDivider().frame(height: 16)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
-                .help("在终端打开 ⇧⌘T")
+                .help("在终端打开 ⇧⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")
             Button { workspace.openEditor(session.location.root) } label: {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
             }
-            .help("在编辑器打开 ⇧⌘E")
+            .help("在编辑器打开 ⇧⌘E").accessibilityLabel("在编辑器打开").accessibilityIdentifier("toolbar.editor")
             Button { session.refresh(forceHistory: true) } label: { Image(systemName: "arrow.clockwise") }
                 .help("刷新 ⌘R").disabled(session.operation != nil)
+                .accessibilityLabel("刷新").accessibilityIdentifier("toolbar.refresh")
         }.buttonStyle(.borderless).controlSize(.small).padding(.horizontal, 10).frame(height: 32)
     }
 
@@ -104,11 +110,12 @@ struct RepositoryView: View {
                 operationStatus(operation)
             } else if !session.notice.isEmpty {
                 Label(session.notice, systemImage: "checkmark.circle").lineLimit(1).fixedSize()
+                    .accessibilityIdentifier("status.notice")
                 if let summary = session.operationOutput.split(whereSeparator: \.isNewline).first {
                     Button { showOperationOutput.toggle() } label: {
                         Text(summary).lineLimit(1).truncationMode(.tail).foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain).help("查看完整输出")
+                    .buttonStyle(.plain).help("查看完整输出").accessibilityIdentifier("status.output")
                     .popover(isPresented: $showOperationOutput) {
                         ScrollView { Text(session.operationOutput).textSelection(.enabled).padding(12) }.themed()
                             .frame(width: 520, height: 220)
@@ -122,6 +129,7 @@ struct RepositoryView: View {
                 ProgressView().controlSize(.mini)
             }
             Text("\(session.status.changes.count) 个变更").foregroundStyle(.secondary)
+                .accessibilityIdentifier("status.changes")
         }.font(.ui(-1)).padding(.horizontal, 10).frame(height: 26)
     }
 }
@@ -144,7 +152,8 @@ extension RepositoryView {
                     .monospacedDigit().foregroundStyle(.secondary).fixedSize()
             }
             Button("取消") { session.cancelOperation() }.buttonStyle(.borderless)
-        }
+                .accessibilityIdentifier("status.cancel")
+        }.accessibilityIdentifier("status.operation")
     }
 
     /// `Writing objects:  45% (9/20)` 中最后一个百分比。
@@ -174,6 +183,11 @@ struct RepositorySidebar: View {
         }
     }
 
+    private var changeSummary: String {
+        let changes = session.status.changes
+        return "未暂存 \(changes.count(where: \.unstaged))，已暂存 \(changes.count(where: \.staged))"
+    }
+
     private func countBadge(_ count: Int, color: Color) -> some View {
         Text("\(count)").font(.ui(-2, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.window)
             .padding(.horizontal, 5).frame(minWidth: 16, minHeight: 15)
@@ -198,6 +212,10 @@ struct RepositorySidebar: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                     }.buttonStyle(.plain).padding(.vertical, 3)
+                        .accessibilityLabel(section.rawValue)
+                        .accessibilityValue(section == .changes ? changeSummary : "")
+                        .accessibilityAddTraits(session.section == section ? .isSelected : [])
+                        .accessibilityIdentifier("section.\(section == .changes ? "changes" : "history")")
                 }
                 let local = session.references.filter { !$0.remote && !$0.tag }
                 let remote = session.references.filter(\.remote)
@@ -221,10 +239,13 @@ struct RepositorySidebar: View {
                     if expanded("tags") {
                         ForEach(tags) { tag in
                             Label(tag.name, systemImage: "tag").lineLimit(1).help(tag.name)
-                                .contextMenu {
-                                    Button("推送标签…") { dialog = .pushTag(tag) }.disabled(session.remotes.isEmpty)
-                                    Button("删除标签…") { dialog = .deleteTag(tag) }
-                                }
+                                .accessibilityElement(children: .combine).accessibilityLabel("标签 \(tag.name)")
+                                .menuActions([[
+                                    MenuAction(title: "推送标签…", enabled: !session.remotes.isEmpty) {
+                                        dialog = .pushTag(tag)
+                                    },
+                                    MenuAction(title: "删除标签…") { dialog = .deleteTag(tag) }
+                                ]])
                         }
                     }
                 } header: { heading("标签", key: "tags", count: tags.count) { dialog = .tag(target: "HEAD") } }
@@ -232,7 +253,9 @@ struct RepositorySidebar: View {
                     if expanded("remotes") {
                         ForEach(session.remotes) { remote in
                             Label(remote.name, systemImage: "network").help(remote.url)
-                                .contextMenu { Button("编辑远程…") { dialog = .remote(remote) } }
+                                .accessibilityElement(children: .combine).accessibilityLabel("远程 \(remote.name)")
+                                .accessibilityValue(remote.url)
+                                .menuActions([[MenuAction(title: "编辑远程…") { dialog = .remote(remote) }]])
                         }
                     }
                 } header: { heading("远程", key: "remotes", count: session.remotes.count) { dialog = .remote(nil) } }
@@ -266,6 +289,10 @@ struct RepositorySidebar: View {
             .padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }.buttonStyle(.plain).help(tree.path).disabled(tree.prunable)
+            .accessibilityLabel("工作树 \(URL(fileURLWithPath: tree.path).lastPathComponent)")
+            .accessibilityValue((current ? "当前，" : "") + (tree.branch.isEmpty ? String(tree.head.prefix(8))
+                    : tree.branch.replacingOccurrences(of: "refs/heads/", with: "")))
+            .accessibilityHint(tree.path)
     }
 
     private func heading(
@@ -282,9 +309,13 @@ struct RepositorySidebar: View {
                 .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }.buttonStyle(.plain)
+                .accessibilityLabel("\(text) \(count)").accessibilityValue(expanded(key) ? "已展开" : "已折叠")
+                .accessibilityIdentifier("heading.\(key)")
             if let action {
                 let button = Button(action: action) { Image(systemName: "plus") }.buttonStyle(.plain)
                     .disabled(session.operation != nil || (text != "远程" && session.status.unborn))
+                    .accessibilityLabel(text == "远程" ? "添加远程" : "新建\(text == "标签" ? "标签" : "分支")")
+                    .accessibilityIdentifier("heading.\(key).add")
                 if let shortcut {
                     button.keyboardShortcut(shortcut, modifiers: .command)
                         .help("新建（⌘\(shortcut.character.uppercased())）")
@@ -305,16 +336,30 @@ struct RepositorySidebar: View {
         .help(branch.name + (branch.checkedOutPath.isEmpty ? "" : "\n" + branch.checkedOutPath))
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { session.checkout(branch) }
-        .contextMenu {
-            let target = branch.remote ? session.localBranch(for: branch) ?? branch : branch
-            Button(branch.remote ? "检出为本地分支" : "检出分支") { session.checkout(branch) }
-                .disabled(target.current || !target.checkedOutPath.isEmpty || session.operation != nil)
-            Button("从此处新建分支…") { dialog = .branch(start: branch.name) }
-            if !branch.remote {
-                Button("重命名分支…") { dialog = .renameBranch(branch) }
-            }
-            Button(branch.remote ? "删除远端分支…" : "删除分支…") { dialog = .deleteBranch(branch) }
-                .disabled(branch.current || !branch.checkedOutPath.isEmpty)
+        // 不设默认 AXPress：检出会改动工作区，只作为命名动作。
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel((branch.remote ? "远端分支 " : "分支 ") + branch.name)
+        .accessibilityValue(branch.current ? "当前分支"
+            : branch.checkedOutPath.isEmpty ? "" : "已在 \(branch.checkedOutPath) 检出")
+        .menuActions([branchActions(branch)])
+    }
+
+    private func branchActions(_ branch: GitReference) -> [MenuAction] {
+        let target = branch.remote ? session.localBranch(for: branch) ?? branch : branch
+        var actions = [
+            MenuAction(title: branch.remote ? "检出为本地分支" : "检出分支",
+                       enabled: !target.current && target.checkedOutPath.isEmpty && session.operation == nil) {
+                session.checkout(branch)
+            },
+            MenuAction(title: "从此处新建分支…") { dialog = .branch(start: branch.name) }
+        ]
+        if !branch.remote {
+            actions.append(MenuAction(title: "重命名分支…") { dialog = .renameBranch(branch) })
         }
+        actions.append(MenuAction(title: branch.remote ? "删除远端分支…" : "删除分支…",
+                                  enabled: !branch.current && branch.checkedOutPath.isEmpty) {
+                dialog = .deleteBranch(branch)
+            })
+        return actions
     }
 }

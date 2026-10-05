@@ -263,14 +263,14 @@ final class DiffLineCell: NSView {
     private static let center = paragraph(.center)
 
     private let field = NSTextField(labelWithString: "")
-    private var line: DiffLine?
-    private var selected = false
-    private var selectable = false
+    private(set) var line: DiffLine?
+    private(set) var selected = false
+    private(set) var selectable = false
     private var wrap = false
     private var font = NSFont.systemFont(ofSize: 12)
     private var textHeight: CGFloat = 0
     private var spacing: CGFloat = 0
-    private var toggle: ((Bool) -> Void)?
+    private(set) var toggle: ((Bool) -> Void)?
 
     override var isFlipped: Bool {
         true

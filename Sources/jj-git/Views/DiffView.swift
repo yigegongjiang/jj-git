@@ -38,6 +38,7 @@ struct DiffView: View {
                 EmptyState(title: "无差异", symbol: "doc.text.magnifyingglass")
             } else {
                 DiffTableView(entries: entries, wrap: wrap, reveal: session.diffReveal, state: state, actions: actions)
+                    .accessibilityIdentifier("diff.table")
             }
         }
         .dismissConfirmationOnBackgroundClick(isPresented: Binding(

@@ -24,6 +24,7 @@ struct HistoryView: View {
                     ScrollView {
                         Text(detail.message).font(.code()).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                            .accessibilityIdentifier("history.message")
                     }
                 } second: {
                     VStack(spacing: 0) {
@@ -42,12 +43,18 @@ struct HistoryView: View {
                                     if session.selectedCommitFile == nil {
                                         RevealButton { session.revealCommitFile(file) }
                                     }
-                                }.tag(file.id).help(file.path)
+                                }
+                                .accessibilityRow("\(file.status) \(file.path)") { session.selectCommitFile(file) }
+                                .accessibilityMenuActions((session.selectedCommitFile == nil
+                                        ? [MenuAction(title: "在全部差异中定位") { session.revealCommitFile(file) }]
+                                        : []) + fileActions(file))
+                                .tag(file.id).help(file.path)
                             }
                         }.listStyle(.plain).scrollContentBackground(.hidden)
+                            .accessibilityIdentifier("history.files")
                             .contextMenu(forSelectionType: String.self) { paths in
                                 if paths.count == 1, let file = detail.files.first(where: { paths.contains($0.id) }) {
-                                    fileMenu(file)
+                                    MenuActionGroups(groups: [fileActions(file)])
                                 }
                             }
                     }
@@ -58,15 +65,13 @@ struct HistoryView: View {
         }
     }
 
-    @ViewBuilder
-    private func fileMenu(_ file: CommitFile) -> some View {
-        Button("在编辑器打开") { workspace?.openEditor(session.location.root + "/" + file.path) }
-            .disabled(file.status.hasPrefix("D"))
-        Button("在文件夹中显示") { workspace?.revealInFileManager(session.location.root + "/" + file.path) }
-        Button("复制路径") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(file.path, forType: .string)
-        }
+    private func fileActions(_ file: CommitFile) -> [MenuAction] {
+        let path = session.location.root + "/" + file.path
+        return [
+            MenuAction(title: "在编辑器打开", enabled: !file.status.hasPrefix("D")) { workspace?.openEditor(path) },
+            MenuAction(title: "在文件夹中显示") { workspace?.revealInFileManager(path) },
+            MenuAction(title: "复制路径") { copy(file.path) }
+        ]
     }
 }
 
@@ -105,14 +110,13 @@ private struct CommitGraphPanel: View {
                         historyRow(row).tag(row.id)
                             .listRowBackground(selection == row.id ? nil :
                                 Theme.titleBar.opacity(index.isMultiple(of: 2) ? 0 : 0.35).background(Theme.window))
-                            .contextMenu {
-                                Button("复制 SHA") {
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString(row.commit.hash, forType: .string)
-                                }
-                                Button("从此提交新建分支…") { dialog = .branch(start: row.commit.hash) }
-                                Button("在此提交新建标签…") { dialog = .tag(target: row.commit.hash) }
-                            }
+                            .accessibilityRow(accessibilityLabel(row.commit)) { selection = row.id }
+                            .accessibilityIdentifier("history.commit")
+                            .menuActions([[
+                                MenuAction(title: "复制 SHA") { copy(row.commit.hash) },
+                                MenuAction(title: "从此提交新建分支…") { dialog = .branch(start: row.commit.hash) },
+                                MenuAction(title: "在此提交新建标签…") { dialog = .tag(target: row.commit.hash) }
+                            ]])
                     }.listRowSeparator(.hidden).listRowInsets(EdgeInsets(
                         top: 0,
                         leading: 5,
@@ -120,6 +124,7 @@ private struct CommitGraphPanel: View {
                         trailing: 8
                     ))
                 }.listStyle(.plain).scrollContentBackground(.hidden)
+                    .accessibilityIdentifier("history.commits")
                     .environment(\.defaultMinListRowHeight, rowHeight)
                     .task(id: selection) {
                         await Task.yield()
@@ -141,6 +146,12 @@ private struct CommitGraphPanel: View {
 
     private func columnBinding(_ keyPath: WritableKeyPath<AppConfig.History, Bool>) -> Binding<Bool> {
         Binding(get: { columnVisible(keyPath) }, set: { workspace?.setHistoryColumn(keyPath, visible: $0) })
+    }
+
+    /// 主题 / 引用 / 作者 / 时间 / SHA，不受显示列开关影响。
+    private func accessibilityLabel(_ commit: GitCommit) -> String {
+        [commit.subject, commit.decorations, commit.author, Self.timeFormatter.string(from: commit.date),
+         commit.shortHash].filter { !$0.isEmpty }.joined(separator: "，")
     }
 
     private static let timeFormatter = makeTimeFormatter("yyyy-MM-dd HH:mm")
@@ -297,4 +308,9 @@ private struct GraphLaneView: View {
                          with: .color(colors[row.lane % colors.count]))
         }.accessibilityLabel("提交图，轨道 \(row.lane + 1)，\(row.commit.parents.count) 个父提交")
     }
+}
+
+private func copy(_ text: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
 }
