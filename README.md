@@ -34,7 +34,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 同步: Fetch ⇧⌘F / Pull (默认 rebase + autostash) ⇧⌘P / Push ⇧⌘U / 强制推送
 - 工具: 终端 ⇧⌘T (默认 iTerm 优先) / 编辑器 ⇧⌘E / 刷新 ⌘R
 - 配置: ⌘, 打开 `~/.config/jj-git/config.json`; 外部修改后点击顶部「重启应用」生效
-- 性能: 顶部「性能」(「重启应用」右侧) 弹窗, 打开时测量一次 (CPU 取 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / 本进程与 Git 累计 CPU 时间 + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)
+- 性能: 顶部「性能」(「重启应用」右侧) 弹窗, 打开时测量一次 (口径不含面板自身: 内存取弹窗前采样, CPU 取弹窗动画结束后 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / 本进程与 Git 累计 CPU 时间 + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)
 - Git 命令记录: `~/.config/jj-git/logs/` 每仓库一个文件, 含耗时; `sort -t$'\t' -k2 -n <file>` 找慢命令
 - 外观: 固定 Dracula 深色主题; 界面 / 等宽字体与字号由 `config.json` `appearance` 设定; 差异行距 `appearance.diffLineSpacing` (自然行高外额外 pt, 默认 2, 0–20)
 - 首次启动: macOS 询问「文稿」访问权限, 允许后才能读取其中的仓库
@@ -45,7 +45,7 @@ Swift 实现的 macOS Git GUI 客户端, 按个人习惯定制; 简单 + 高效 
 - 主题: `Theme` (Dracula 色值) + `Typography` (字体缓存, 启动时配置); 每个 `NSHostingView` 根 (分栏 / 弹窗) 调 `.themed()`, 环境值不跨宿主
 - 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / 签名 (默认 ad-hoc, 传 Team 用 Apple Development)
 - Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
-- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree); App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
+- 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree), 合并 1 秒内事件; App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
 - 标签释放: 未激活超过 `tabs.idleUnloadSeconds` (默认 180 秒, 1–86400) 释放 session, 保留标签位置; 未挂载标签为灰紫色, 点击重新加载; Git 操作完成后释放; 未提交的提交信息与视图状态随 session 清除; 配置修改后重启生效
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行

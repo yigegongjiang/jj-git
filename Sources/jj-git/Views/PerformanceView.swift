@@ -1,8 +1,10 @@
 import SwiftUI
 
 /// 顶部「性能」面板：打开或点「重新测量」时测量一次，不持续采样。
+/// 口径与面板未打开时一致：内存取弹窗出现前的采样；CPU 窗口避开弹窗动画，窗口内不更新界面。
 struct PerformanceView: View {
     let workspace: Workspace
+    let baseline: ProcessSample?
     @State private var sample: ProcessSample?
     @State private var cpu: Double?
     @State private var tabs: [TabUsage] = []
@@ -89,34 +91,39 @@ struct PerformanceView: View {
 
     private var status: String {
         if measuring {
-            return "测量中（1 秒）…"
+            return "测量中…"
         }
         return measuredAt.map { "测量于 \($0.formatted(date: .omitted, time: .standard))" } ?? ""
     }
 
-    /// CPU 需两次采样取差值：间隔 1 秒，期间只等待不轮询；关闭面板即取消。
+    /// CPU 需两次采样取差值；结果最后一次性写入界面，避免渲染落入测量窗口。关闭面板即取消。
     private func measure() async {
         measuring = true
         defer { measuring = false }
-        guard let start = ProcessSample.current() else { return }
-        sample = start
-        await refreshTabs()
-        do { try await Task.sleep(for: .seconds(1)) } catch { return }
-        guard let end = ProcessSample.current() else { return }
-        cpu = end.cpuPercent(since: start)
-        sample = end
-        measuredAt = Date()
+        // 重新测量时弹窗已显示，内存含面板自身（数 MB）。
+        guard let memory = request == 0 ? baseline ?? ProcessSample.current() : ProcessSample.current() else { return }
+        do {
+            try await Task.sleep(for: .milliseconds(500))
+            guard let start = ProcessSample.current() else { return }
+            try await Task.sleep(for: .seconds(1))
+            guard let end = ProcessSample.current() else { return }
+            let measured = await measureTabs()
+            guard !Task.isCancelled else { return }
+            sample = memory
+            cpu = end.cpuPercent(since: start)
+            tabs = measured
+            measuredAt = Date()
+        } catch { return }
     }
 
-    private func refreshTabs() async {
+    private func measureTabs() async -> [TabUsage] {
         let selected = workspace.library.selectedPath
         let snapshots = workspace.library.tabs.map { ($0, workspace.sessions[$0]?.snapshot) }
         let measured = await Task.detached(priority: .utility) {
             snapshots.map { ($0.0, $0.1?.usage()) }
         }.value
-        guard !Task.isCancelled else { return }
-        // 按估算体积降序；相同时保持标签顺序，避免每秒跳动。
-        tabs = measured.enumerated().sorted {
+        // 按估算体积降序；相同时保持标签顺序。
+        return measured.enumerated().sorted {
             let left = $0.element.1?.bytes ?? -1, right = $1.element.1?.bytes ?? -1
             return left != right ? left > right : $0.offset < $1.offset
         }.map { TabUsage(path: $0.element.0, selected: $0.element.0 == selected, usage: $0.element.1) }

@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var workspace: Workspace
     @State private var showingPerformance = false
+    @State private var performanceBaseline: ProcessSample?
 
     var body: some View {
         Group {
@@ -36,7 +37,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $workspace.showingRecent) { RecentRepositoriesView(workspace: workspace) }
         // 用 sheet：popover 弹出动画会让内存瞬时上涨约 130 MB，测量会把它算进去。
-        .sheet(isPresented: $showingPerformance) { PerformanceView(workspace: workspace) }
+        .sheet(isPresented: $showingPerformance) {
+            PerformanceView(workspace: workspace, baseline: performanceBaseline)
+        }
     }
 
     private var main: some View {
@@ -55,9 +58,13 @@ struct ContentView: View {
                     .buttonStyle(.borderless).padding(.horizontal, 8)
                     .help("重新读取配置；有未提交的提交信息或任务进行中时不可重启")
                     .disabled(!workspace.canRestart)
-                Button("性能", systemImage: "gauge.with.dots.needle.33percent") { showingPerformance = true }
-                    .buttonStyle(.borderless).padding(.horizontal, 8)
-                    .help("查看 CPU / 内存与各标签内存占用")
+                Button("性能", systemImage: "gauge.with.dots.needle.33percent") {
+                    // 弹窗出现前采样内存，读数不含面板自身。
+                    performanceBaseline = ProcessSample.current()
+                    showingPerformance = true
+                }
+                .buttonStyle(.borderless).padding(.horizontal, 8)
+                .help("查看 CPU / 内存与各标签内存占用")
             }
             .background(Theme.titleBar)
             ThemedDivider()

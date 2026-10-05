@@ -24,6 +24,7 @@ final class RepositoryMonitor: @unchecked Sendable {
         contextBox = MonitorCallback(ignored: ignored, callback)
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(contextBox).toOpaque(),
                                            retain: nil, release: nil, copyDescription: nil)
+        // 合并 1 秒内的事件：仓库位于频繁写入的目录（如主目录）时，每批事件都刷新会持续占用 CPU。
         stream = FSEventStreamCreate(
             nil, { _, info, count, eventPaths, _, _ in
                 guard let info else { return }
@@ -35,7 +36,7 @@ final class RepositoryMonitor: @unchecked Sendable {
                     }
                 }
                 box.callback()
-            }, &context, paths as CFArray, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.2,
+            }, &context, paths as CFArray, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 1.0,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot)
         )
         if let stream {
