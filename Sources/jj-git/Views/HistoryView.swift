@@ -61,6 +61,8 @@ private struct CommitGraphPanel: View {
                     Toggle("作者", isOn: columnBinding(\.showAuthor))
                     Toggle("时间", isOn: columnBinding(\.showTime))
                     Toggle("SHA", isOn: columnBinding(\.showHash))
+                    Divider()
+                    Toggle("精简时间 (261001.1234)", isOn: columnBinding(\.compactTime))
                 } label: {
                     Label("显示列", systemImage: "line.3.horizontal.decrease")
                 }.menuStyle(.borderlessButton).fixedSize()
@@ -118,14 +120,17 @@ private struct CommitGraphPanel: View {
         Binding(get: { columnVisible(keyPath) }, set: { workspace?.setHistoryColumn(keyPath, visible: $0) })
     }
 
-    private static let timeFormatter: DateFormatter = {
+    private static let timeFormatter = makeTimeFormatter("yyyy-MM-dd HH:mm")
+    private static let compactTimeFormatter = makeTimeFormatter("yyMMdd.HHmm")
+
+    private static func makeTimeFormatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = .autoupdatingCurrent
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        formatter.dateFormat = format
         return formatter
-    }()
+    }
 
     /// 图轨道与行同高，字号变化时一起缩放，避免轨道线断开。
     private var rowHeight: CGFloat {
@@ -193,7 +198,8 @@ private struct CommitGraphPanel: View {
                     .help(commit.author + " <" + commit.email + ">")
             }
             if columnVisible(\.showTime) {
-                Text(Self.timeFormatter.string(from: commit.date)).font(.mono(-2))
+                let formatter = columnVisible(\.compactTime) ? Self.compactTimeFormatter : Self.timeFormatter
+                Text(formatter.string(from: commit.date)).font(.mono(-2))
                     .fixedSize().help(commit.date.formatted(date: .complete, time: .complete))
             }
             if columnVisible(\.showHash) {

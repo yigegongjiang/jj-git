@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.28] - 2026-10-05
+
+### Added
+
+- 提交历史「显示列」增加「精简时间」开关，将 `2026-10-01 12:34` 显示为 `261001.1234`；时间列随内容缩窄，重启后保留选择
+  - `history.compactTime` 默认 false；缓存本地时区 POSIX / Gregorian `yyMMdd.HHmm` formatter，复用配置保存与 `fixedSize` 布局，悬停保留完整时间
+
 ## [0.4.27] - 2026-10-05
 
 ### Changed

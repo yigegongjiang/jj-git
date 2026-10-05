@@ -35,6 +35,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         var showReferences = true
         var showAuthor = true
         var showTime = true
+        var compactTime = false
         var showHash = true
     }
 
