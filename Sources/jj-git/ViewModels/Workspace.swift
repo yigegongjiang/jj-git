@@ -61,7 +61,7 @@ final class Workspace {
         loadState()
     }
 
-    func open(_ path: String, select shouldSelect: Bool = true, groupID: UUID? = nil) async {
+    func open(_ path: String, groupID: UUID? = nil) async {
         guard !opening.contains(path) else { return }
         opening.insert(path)
         defer { opening.remove(path) }
@@ -76,11 +76,7 @@ final class Workspace {
             if !library.tabs.contains(location.root) {
                 library.tabs.append(location.root)
             }
-            if shouldSelect {
-                select(location.root)
-            } else if library.selectedPath != location.root {
-                scheduleIdleUnload(location.root)
-            }
+            select(location.root)
             missingRepositories.removeAll { $0 == path || $0 == location.root }
             save()
         } catch { reportOpenFailure(error, path: path) }

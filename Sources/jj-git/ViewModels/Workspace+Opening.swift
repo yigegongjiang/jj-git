@@ -11,13 +11,15 @@ extension Workspace {
     func restore() async {
         checkMissingRepositories()
         await repositoryCheckTask?.value
-        let selected = library.selectedPath
-        for path in library.tabs where !missingRepositories.contains(path) {
-            await open(path, select: path == selected)
-        }
+        // 只挂载当前标签，其余保持未挂载，点击时加载；当前标签打开失败则按标签顺序选第一个可打开的。
         // 打开失败的标签保留（可能只是等待系统授权），点击标签时重试；不再需要时手动关闭。
-        if self.selected == nil, let path = library.tabs.first(where: { sessions[$0] != nil }) {
-            select(path)
+        let tabs = library.tabs
+        let candidates = tabs.filter { $0 == library.selectedPath } + tabs.filter { $0 != library.selectedPath }
+        for path in candidates where !missingRepositories.contains(path) {
+            await open(path)
+            if selected != nil {
+                break
+            }
         }
     }
 
