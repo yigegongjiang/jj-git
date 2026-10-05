@@ -7,6 +7,23 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.26] - 2026-10-05
+
+### Added
+
+- 提交历史增加「显示列」菜单，独立切换分支 / 标签、作者、时间和 SHA，重启后保留
+  - `AppConfig.History` 新增 `showReferences/showAuthor/showTime/showHash`；`Workspace.setHistoryColumn` 写入 `config.json` 并同步运行时配置
+
+### Changed
+
+- 提交标题统一首列对齐，分支 / 标签移到第二列；窄窗口将作者、时间和 SHA 放到下一行
+  - `HistoryView` 固定引用列 190 pt，`ViewThatFits` 切换单行 / 双行布局；标题起点一致
+
+### Fixed
+
+- 历史时间完整显示为本地时区的 `yyyy-MM-dd HH:mm`，不再截断
+  - 缓存 POSIX `DateFormatter`、Gregorian calendar、本地时区；时间与 SHA 使用等宽字体 + `fixedSize`，悬停显示完整信息
+
 ## [0.4.25] - 2026-10-05
 
 ### Changed

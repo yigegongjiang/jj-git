@@ -11,6 +11,20 @@
 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [SemVer](https://semver.org/).
 
+## [0.4.26] - 2026-10-05
+
+### Added
+
+- 提交历史增加「显示列」菜单，独立切换分支 / 标签、作者、时间和 SHA，重启后保留
+
+### Changed
+
+- 提交标题统一首列对齐，分支 / 标签移到第二列；窄窗口将作者、时间和 SHA 放到下一行
+
+### Fixed
+
+- 历史时间完整显示为本地时区的 `yyyy-MM-dd HH:mm`，不再截断
+
 ## [0.4.25] - 2026-10-05
 
 ### Changed

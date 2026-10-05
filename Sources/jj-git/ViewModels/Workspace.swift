@@ -371,6 +371,17 @@ extension Workspace {
         save()
     }
 
+    func setHistoryColumn(_ keyPath: WritableKeyPath<AppConfig.History, Bool>, visible: Bool) {
+        do {
+            let data = try ConfigStore.read(ConfigStore.configURL)
+            var saved = try data.map { try ConfigStore.decode($0, defaults: AppConfig()) } ?? AppConfig()
+            saved.history[keyPath: keyPath] = visible
+            try ConfigStore.write(ConfigStore.encode(saved), to: ConfigStore.configURL)
+            config.history[keyPath: keyPath] = visible
+            AppConfig.current = config
+        } catch { self.error = "\(ConfigStore.configURL.path)：\n\(error.localizedDescription)" }
+    }
+
     func toggleSection(_ key: String) {
         let sections = library.collapsedSections
         library.collapsedSections = sections.contains(key) ? sections.filter { $0 != key } : sections + [key]

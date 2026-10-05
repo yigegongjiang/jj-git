@@ -32,6 +32,10 @@ struct AppConfig: Codable, Equatable, Sendable {
     struct History: Codable, Equatable, Sendable {
         var initialCount = 2000
         var pageSize = 500
+        var showReferences = true
+        var showAuthor = true
+        var showTime = true
+        var showHash = true
     }
 
     struct Diff: Codable, Equatable, Sendable {

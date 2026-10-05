@@ -48,6 +48,7 @@ struct HistoryView: View {
 }
 
 private struct CommitGraphPanel: View {
+    @Environment(\.workspace) private var workspace
     @Bindable var session: RepositorySession
     @Binding var dialog: RepositoryDialog?
     @State private var selection: String?
@@ -55,6 +56,15 @@ private struct CommitGraphPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             SectionHeading(title: "提交历史 · \(session.graph.count)") {
+                Menu {
+                    Toggle("分支 / 标签", isOn: columnBinding(\.showReferences))
+                    Toggle("作者", isOn: columnBinding(\.showAuthor))
+                    Toggle("时间", isOn: columnBinding(\.showTime))
+                    Toggle("SHA", isOn: columnBinding(\.showHash))
+                } label: {
+                    Label("显示列", systemImage: "line.3.horizontal.decrease")
+                }.menuStyle(.borderlessButton).fixedSize()
+                    .help("选择提交历史显示的列；时间使用本地时区")
                 if session.hasMoreHistory {
                     Button("加载更多") {
                         session.historyLimit += AppConfig.current.history.pageSize
@@ -98,6 +108,23 @@ private struct CommitGraphPanel: View {
         }
     }
 
+    private func columnVisible(_ keyPath: KeyPath<AppConfig.History, Bool>) -> Bool {
+        (workspace?.config.history ?? AppConfig.current.history)[keyPath: keyPath]
+    }
+
+    private func columnBinding(_ keyPath: WritableKeyPath<AppConfig.History, Bool>) -> Binding<Bool> {
+        Binding(get: { columnVisible(keyPath) }, set: { workspace?.setHistoryColumn(keyPath, visible: $0) })
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
+
     /// 图轨道与行同高，字号变化时一起缩放，避免轨道线断开。
     private var rowHeight: CGFloat {
         Typography.shared.fontSize + 14
@@ -106,29 +133,23 @@ private struct CommitGraphPanel: View {
     private func historyRow(_ row: CommitGraphRow) -> some View {
         HStack(spacing: 7) {
             Color.clear.frame(width: CGFloat(session.graphLanes) * 12 + 12, height: 0)
-            Group {
-                if !row.commit.decorations.isEmpty {
-                    CommitRefLayout {
-                        ForEach(Array(row.commit.decorations.components(separatedBy: ", ").enumerated()),
-                                id: \.offset) { _, ref in
-                            let isTag = ref.hasPrefix("tag: ")
-                            Text(isTag ? String(ref.dropFirst(5)) : ref).font(.ui(-2, weight: .medium))
-                                .foregroundStyle(isTag ? Theme.green : Theme.foreground)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 4).padding(.vertical, 2)
-                                .background(isTag ? Theme.green.opacity(0.25) : Theme.badge,
-                                            in: RoundedRectangle(cornerRadius: 3))
-                                .help(ref)
-                        }
-                    }.frame(width: 190).padding(.vertical, 3)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    commitSummary(row.commit)
+                    commitReferences(row.commit)
+                    Spacer(minLength: 4)
+                    commitMetadata(row.commit)
                 }
-                // List 行不继承外层字体，需显式指定。
-                Text(row.commit.subject).font(.ui()).lineLimit(1)
-                Spacer(minLength: 4)
-                Text(row.commit.author).font(.ui(-1)).foregroundStyle(.secondary).lineLimit(1).frame(width: 90)
-                Text(row.commit.date.formatted(date: .numeric, time: .shortened))
-                    .font(.ui(-1)).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
-                Text(row.commit.shortHash).font(.mono(-2)).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 12) {
+                        commitSummary(row.commit)
+                        commitReferences(row.commit)
+                    }
+                    HStack {
+                        Spacer(minLength: 0)
+                        commitMetadata(row.commit)
+                    }
+                }.padding(.vertical, 3)
             }.opacity(row.merged ? 1 : Theme.notMergedOpacity)
         }.frame(minHeight: rowHeight)
             .overlay(alignment: .leading) {
@@ -136,6 +157,47 @@ private struct CommitGraphPanel: View {
                     .allowsHitTesting(false)
             }
             .help(row.commit.subject + "\n" + row.commit.author + " · " + row.commit.date.formatted())
+    }
+
+    private func commitSummary(_ commit: GitCommit) -> some View {
+        Text(commit.subject).font(.ui()).lineLimit(1)
+            .frame(minWidth: 100, maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func commitReferences(_ commit: GitCommit) -> some View {
+        if columnVisible(\.showReferences) {
+            CommitRefLayout {
+                ForEach(Array(commit.decorations.components(separatedBy: ", ").filter { !$0.isEmpty }.enumerated()),
+                        id: \.offset) { _, ref in
+                    let isTag = ref.hasPrefix("tag: ")
+                    Text(isTag ? String(ref.dropFirst(5)) : ref).font(.ui(-2, weight: .medium))
+                        .foregroundStyle(isTag ? Theme.green : Theme.foreground)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4).padding(.vertical, 2)
+                        .background(isTag ? Theme.green.opacity(0.25) : Theme.badge,
+                                    in: RoundedRectangle(cornerRadius: 3))
+                        .help(ref)
+                }
+            }.frame(width: 190, alignment: .leading).padding(.vertical, 3)
+        }
+    }
+
+    private func commitMetadata(_ commit: GitCommit) -> some View {
+        HStack(spacing: 12) {
+            if columnVisible(\.showAuthor) {
+                Text(commit.author).font(.ui(-1)).lineLimit(1)
+                    .frame(width: max(90, Typography.shared.fontSize * 7), alignment: .leading)
+                    .help(commit.author + " <" + commit.email + ">")
+            }
+            if columnVisible(\.showTime) {
+                Text(Self.timeFormatter.string(from: commit.date)).font(.mono(-2))
+                    .fixedSize().help(commit.date.formatted(date: .complete, time: .complete))
+            }
+            if columnVisible(\.showHash) {
+                Text(commit.shortHash).font(.mono(-2)).fixedSize().help(commit.hash)
+            }
+        }.foregroundStyle(.secondary)
     }
 }
 
