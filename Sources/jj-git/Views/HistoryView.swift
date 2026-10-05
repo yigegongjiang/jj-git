@@ -105,13 +105,22 @@ private struct CommitGraphPanel: View {
 
     private func historyRow(_ row: CommitGraphRow) -> some View {
         HStack(spacing: 7) {
-            GraphLaneView(row: row).frame(width: CGFloat(session.graphLanes) * 12 + 12, height: rowHeight).clipped()
+            Color.clear.frame(width: CGFloat(session.graphLanes) * 12 + 12, height: 0)
             Group {
                 if !row.commit.decorations.isEmpty {
-                    Text(row.commit.decorations).font(.ui(-2, weight: .medium))
-                        .lineLimit(1).padding(.horizontal, 4).padding(.vertical, 2)
-                        .background(Theme.badge, in: RoundedRectangle(cornerRadius: 3))
-                        .frame(maxWidth: 190, alignment: .leading)
+                    CommitRefLayout {
+                        ForEach(Array(row.commit.decorations.components(separatedBy: ", ").enumerated()),
+                                id: \.offset) { _, ref in
+                            let isTag = ref.hasPrefix("tag: ")
+                            Text(isTag ? String(ref.dropFirst(5)) : ref).font(.ui(-2, weight: .medium))
+                                .foregroundStyle(isTag ? Theme.green : Theme.foreground)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 4).padding(.vertical, 2)
+                                .background(isTag ? Theme.green.opacity(0.25) : Theme.badge,
+                                            in: RoundedRectangle(cornerRadius: 3))
+                                .help(ref)
+                        }
+                    }.frame(width: 190).padding(.vertical, 3)
                 }
                 // List 行不继承外层字体，需显式指定。
                 Text(row.commit.subject).font(.ui()).lineLimit(1)
@@ -121,8 +130,49 @@ private struct CommitGraphPanel: View {
                     .font(.ui(-1)).foregroundStyle(.secondary).lineLimit(1).frame(width: 110, alignment: .leading)
                 Text(row.commit.shortHash).font(.mono(-2)).foregroundStyle(.secondary)
             }.opacity(row.merged ? 1 : Theme.notMergedOpacity)
-        }.frame(height: rowHeight)
+        }.frame(minHeight: rowHeight)
+            .overlay(alignment: .leading) {
+                GraphLaneView(row: row).frame(width: CGFloat(session.graphLanes) * 12 + 12).clipped()
+                    .allowsHitTesting(false)
+            }
             .help(row.commit.subject + "\n" + row.commit.author + " · " + row.commit.date.formatted())
+    }
+}
+
+private struct CommitRefLayout: Layout {
+    private let spacing: CGFloat = 3
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
+        arrangement(width: proposal.width ?? 190, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
+        let layout = arrangement(width: bounds.width, subviews: subviews)
+        for (subview, frame) in zip(subviews, layout.frames) {
+            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                          anchor: .topLeading, proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func arrangement(width: CGFloat, subviews: Subviews) -> (size: CGSize, frames: [CGRect]) {
+        let width = max(1, width)
+        var frames: [CGRect] = []
+        var offsetX: CGFloat = 0
+        var offsetY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        for subview in subviews {
+            let ideal = subview.sizeThatFits(.unspecified)
+            let size = subview.sizeThatFits(ProposedViewSize(width: min(ideal.width, width), height: nil))
+            if offsetX > 0, offsetX + size.width > width {
+                offsetX = 0
+                offsetY += lineHeight + spacing
+                lineHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: offsetX, y: offsetY), size: size))
+            offsetX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        return (CGSize(width: width, height: offsetY + lineHeight), frames)
     }
 }
 
