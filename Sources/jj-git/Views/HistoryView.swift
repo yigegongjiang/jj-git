@@ -27,7 +27,8 @@ struct HistoryView: View {
                 } second: {
                     VStack(spacing: 0) {
                         SectionHeading(title: "变更文件 · \(detail.files.count)",
-                                       titleAction: session.showCommitOverview) { EmptyView() }
+                                       titleAction: session.showCommitOverview,
+                                       titleActive: session.selectedCommitFile == nil) { EmptyView() }
                         List(selection: Binding(get: { session.selectedCommitFile?.id }, set: { path in
                             session.selectCommitFile(detail.files.first { $0.id == path })
                         })) {

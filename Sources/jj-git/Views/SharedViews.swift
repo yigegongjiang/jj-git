@@ -104,21 +104,45 @@ private struct WindowDragArea: NSViewRepresentable {
 struct SectionHeading<Trailing: View>: View {
     let title: String
     var titleAction: (() -> Void)?
+    /// 下方差异区正在显示该标题对应的全部差异。
+    var titleActive = false
     @ViewBuilder let trailing: () -> Trailing
     var body: some View {
         HStack {
             if let titleAction {
-                Button(action: titleAction) {
-                    Text(title).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain).help("显示全部差异").accessibilityLabel(title)
+                OverviewTitle(title: title, active: titleActive, action: titleAction)
             } else {
                 Text(title)
-                Spacer()
             }
+            Spacer()
             trailing()
         }
         .font(.ui(-1, weight: .semibold)).foregroundStyle(.secondary)
         .padding(.horizontal, 10).frame(height: 28).background(Theme.titleBar)
+    }
+}
+
+/// 可点击标题：常驻图标 + 悬停底色提示可点击；激活时高亮，表明差异区正显示其全部差异。
+private struct OverviewTitle: View {
+    let title: String
+    let active: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(title)
+                Image(systemName: active ? "rectangle.stack.fill" : "rectangle.stack").font(.ui(-2))
+            }
+            .foregroundStyle(active ? Theme.accent : hovering ? Theme.foreground : Color.secondary)
+            .padding(.horizontal, 6).padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(hovering ? 0.1 : 0)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).padding(.leading, -6)
+        .onHover { hovering = $0 }
+        .help("显示全部差异").accessibilityLabel(title)
     }
 }
 

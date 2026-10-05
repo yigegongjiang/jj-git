@@ -41,7 +41,8 @@ struct ChangeList: View {
     var body: some View {
         VStack(spacing: 0) {
             SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)",
-                           titleAction: showOverview) {
+                           titleAction: showOverview,
+                           titleActive: session.diffOverview && session.selectedStaged == staged) {
                 HStack(spacing: 10) {
                     Button { transfer(selectedFiles) } label: {
                         Image(systemName: staged ? "chevron.up" : "chevron.down")
