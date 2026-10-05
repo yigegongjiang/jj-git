@@ -38,6 +38,7 @@
 2. 写版本: `version.xcconfig` + `CHANGELOG.md` + `CHANGELOG.dev.md` 同步编辑 (与 tag 一致)
 3. 预部署: `./scripts/install-local.sh [DEVELOPMENT_TEAM]`
 4. 发布: commit + annotated tag (`-a -m`) + push branch + tag (有 remote 时)
+5. GitHub Release: tag push 触发 `.github/workflows/release.yml` -> 等待成功 + 核对产物
 
 ## 1. 验证
 
@@ -63,5 +64,17 @@ git diff --cached                                   # 确认暂存内容恰好�
 git commit -m "chore(release): vX.Y.Z"
 git tag -a vX.Y.Z -m "vX.Y.Z"
 git push origin "$(git branch --show-current)"       # 仅当 `git remote` 非空
-git push origin vX.Y.Z                               # 同上
+git push origin vX.Y.Z                               # 同上; 先 branch 后 tag (CI 校验 tag 在 master 上)
 ```
+
+## 5. GitHub Release
+
+tag push -> `.github/workflows/release.yml` -> `./scripts/publish-release.sh vX.Y.Z` (`./scripts/package.sh` 构建 universal ad-hoc 签名 zip + `CHANGELOG.md` 对应段为 notes)。
+
+```bash
+gh run watch -R yigegongjiang/jj-git --exit-status \
+  "$(gh run list -R yigegongjiang/jj-git --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+gh release view vX.Y.Z -R yigegongjiang/jj-git      # 资产 jj-git-X.Y.Z-macos.zip 存在
+```
+
+> 失败 -> 修复后发新 PATCH 版本; MUST NOT 删除 / 改写已推送 tag
