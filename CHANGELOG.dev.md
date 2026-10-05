@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.34] - 2026-10-05
+
+### Fixed
+
+- 修复仓库颜色仅作用于文本的问题，文件夹图标同步显示所选颜色
+  - `LibraryView.repositoryIcon` 独立绘制图标，叠加透明 `Menu` 点击区域，避免原生菜单 label 覆盖图标颜色
+
 ## [0.4.33] - 2026-10-05
 
 ### Added
