@@ -7,6 +7,20 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.46] - 2026-10-05
+
+### Added
+
+- Fetch / Pull / Push 等操作在状态栏实时显示进度（阶段、百分比、已传输量与速率）和已用时间
+  - 网络命令加 `--progress`; `GitExecution` 计时器每 0.25s 读 stderr 末尾 4 KiB 取最新行 -> `GitProgressHandler` -> `operationProgress`; 末尾 `done.` 不显示满格
+- 正在执行的 Fetch / Pull / Push 按钮显示加载指示；提交时 hooks 输出也实时显示
+  - `RepositoryAction.transfer` 匹配按钮; Menu 标签不渲染 ProgressView, Push 指示放菜单前; 进度回调覆盖 `perform` 内全部 Git 调用
+
+### Changed
+
+- 操作完成提示附带耗时，点击输出摘要查看完整输出
+  - `notice` 只存摘要 + 耗时, 输出移至 `operationOutput`; stderr 按 `\r` 折叠为每行最终状态; 命令日志失败摘要优先 `fatal:` / `error:` 行
+
 ## [0.4.45] - 2026-10-05
 
 ### Added
