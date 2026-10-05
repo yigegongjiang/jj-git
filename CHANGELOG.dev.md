@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.43] - 2026-10-05
+
+### Changed
+
+- 「未暂存 / 已暂存 / 变更文件」标题旁显示全部差异图标，悬停高亮；正在显示全部差异时标题高亮
+  - `SectionHeading` 新增 `titleActive`; `OverviewTitle` = `rectangle.stack` 图标 + `onHover` 底色, 激活用 `Theme.accent` + `.fill` 图标
+
 ## [0.4.42] - 2026-10-05
 
 ### Changed
