@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.49] - 2026-10-05
+
+### Added
+
+- 未暂存 / 已暂存 / 提交历史的文件右键菜单新增「复制相对路径」「复制完整路径」；多选变更文件时逐行复制全部路径
+  - `MenuAction.copyPaths` 统一生成两项（`location.root` 拼完整路径）；`copyToPasteboard` 移至 `MenuAction.swift` 共用；历史原「复制路径」并入
+
 ## [0.4.48] - 2026-10-05
 
 ### Added
