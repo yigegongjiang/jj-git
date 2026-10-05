@@ -23,6 +23,7 @@ struct LibraryView: View {
                 } label: { Image(systemName: "arrow.up.arrow.down") }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                     .help("排序：拖拽仓库或分组调整顺序").accessibilityLabel("仓库与分组排序")
+                    .accessibilityMenuActions([MenuAction(title: "按名称排序") { workspace.sortSidebarByName() }])
                 Button { newGroup = true } label: { Image(systemName: "folder.badge.plus") }
                     .buttonStyle(.plain).help("新建分组").accessibilityLabel("新建分组")
             }
@@ -219,6 +220,16 @@ struct LibraryView: View {
                 }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .help("仓库颜色").accessibilityLabel("\(repository.name) 仓库颜色")
+                .accessibilityMenuActions(colorActions(repository))
+            }
+    }
+
+    private func colorActions(_ repository: SavedRepository) -> [MenuAction] {
+        [MenuAction(title: "颜色：默认") { workspace.setRepositoryColor(repository.path, color: nil) }]
+            + RepositoryColor.allCases.map { color in
+                MenuAction(title: "颜色：" + color.title) {
+                    workspace.setRepositoryColor(repository.path, color: color.rawValue)
+                }
             }
     }
 

@@ -95,6 +95,7 @@ private struct CommitGraphPanel: View {
                     Label("显示列", systemImage: "line.3.horizontal.decrease")
                 }.menuStyle(.borderlessButton).fixedSize()
                     .help("选择提交历史显示的列；时间使用本地时区")
+                    .accessibilityLabel("显示列").accessibilityMenuActions(columnActions)
                 if session.hasMoreHistory {
                     Button("加载更多") {
                         session.historyLimit += AppConfig.current.history.pageSize
@@ -136,6 +137,20 @@ private struct CommitGraphPanel: View {
                         await Task.yield()
                         selection = session.selectedCommit?.id
                     }
+            }
+        }
+    }
+
+    /// 菜单内的开关逐项暴露为按钮，标题带当前状态。
+    private var columnActions: [MenuAction] {
+        let columns: [(String, WritableKeyPath<AppConfig.History, Bool>)] = [
+            ("分支 / 标签", \.showReferences), ("作者", \.showAuthor), ("时间", \.showTime), ("SHA", \.showHash),
+            ("精简时间", \.compactTime)
+        ]
+        return columns.map { title, keyPath in
+            let visible = columnVisible(keyPath)
+            return MenuAction(title: (visible ? "关闭：" : "开启：") + title) {
+                workspace?.setHistoryColumn(keyPath, visible: !visible)
             }
         }
     }

@@ -271,6 +271,8 @@ final class DiffLineCell: NSView {
     private var textHeight: CGFloat = 0
     private var spacing: CGFloat = 0
     private(set) var toggle: ((Bool) -> Void)?
+    /// ⇧ 点击的辅助功能子按钮；随行视图复用。
+    lazy var rangeButton = DiffLineRangeButton(cell: self)
 
     override var isFlipped: Bool {
         true

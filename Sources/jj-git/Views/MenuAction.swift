@@ -26,16 +26,18 @@ struct MenuActionGroups: View {
 }
 
 extension View {
-    /// 命名动作不受 `.disabled` 约束，只暴露当前可用项。
+    /// 可用项同时暴露为命名动作与子按钮（Peekaboo 等只认 AXPress 的工具按子按钮操作）。
+    /// 二者都不受 `.disabled` 约束，因此只暴露当前可用项。
     func accessibilityMenuActions(_ actions: [MenuAction]) -> some View {
         accessibilityActions { MenuActionGroups(groups: [actions.filter(\.enabled)]) }
+            .accessibilityChildren { MenuActionGroups(groups: [actions.filter(\.enabled)]) }
     }
 
     func menuActions(_ groups: [[MenuAction]]) -> some View {
         contextMenu { MenuActionGroups(groups: groups) }.accessibilityMenuActions(groups.flatMap(\.self))
     }
 
-    /// 列表行合并为单个辅助功能元素：AXPress 只做选择 / 打开，变更操作只走命名动作。
+    /// 列表行合并为单个辅助功能元素：AXPress 只做选择 / 打开，变更操作走子按钮 / 命名动作。
     func accessibilityRow(_ label: String, press: @escaping () -> Void) -> some View {
         accessibilityElement(children: .ignore).accessibilityLabel(label)
             .accessibilityAddTraits(.isButton).accessibilityAction(.default, press)

@@ -11,6 +11,10 @@ struct RepositoryView: View {
         return (pull.rebase ? "Rebase 到上游" : "Merge 上游") + (pull.autostash ? "，本地变更自动贮藏后恢复" : "") + " ⇧⌘P"
     }
 
+    private var canPush: Bool {
+        !session.remotes.isEmpty && !session.status.detached && session.operation == nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             toolbar
@@ -75,8 +79,12 @@ struct RepositoryView: View {
                 Button("Push…") { dialog = .push(force: false) }
                 Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }
             } label: { Label("Push", systemImage: "arrow.up") }
-                .fixedSize().disabled(session.remotes.isEmpty || session.status.detached || session.operation != nil)
-                .accessibilityIdentifier("toolbar.push")
+                .fixedSize().disabled(!canPush)
+                .accessibilityLabel("Push").accessibilityIdentifier("toolbar.push")
+                .accessibilityMenuActions([
+                    MenuAction(title: "Push…", enabled: canPush) { dialog = .push(force: false) },
+                    MenuAction(title: "强制推送（force-with-lease）…", enabled: canPush) { dialog = .push(force: true) }
+                ])
             ThemedDivider().frame(height: 16)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
                 .help("在终端打开 ⇧⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")
