@@ -9,6 +9,12 @@
 
 # Changelog
 
+## [0.4.38] - 2026-10-05
+
+### Added
+
+- GitHub Release 提供 macOS 安装包（Apple Silicon + Intel 通用，未公证，安装说明见发布页）
+
 ## [0.4.37] - 2026-10-05
 
 ### Fixed
