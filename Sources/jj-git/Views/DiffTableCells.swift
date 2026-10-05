@@ -14,6 +14,8 @@ struct DiffMetrics {
     let button: NSFont
     let small: NSFont
     let charWidth: CGFloat
+    /// 非 ASCII 字符（CJK 等回退字体）的字宽，仅用于占位行高估算。
+    let wideWidth: CGFloat
     let rowHeight: CGFloat
     let spacing: CGFloat
     let textHeight: CGFloat
@@ -27,6 +29,7 @@ struct DiffMetrics {
         button = typography.font(mono: false, size: typography.fontSize - 1, weight: .regular)
         small = typography.font(mono: true, size: typography.fontSize - 1, weight: .regular)
         charWidth = ("0" as NSString).size(withAttributes: [.font: code]).width
+        wideWidth = ("中" as NSString).size(withAttributes: [.font: code]).width
         spacing = typography.diffLineSpacing
         measure.wraps = true
         measure.lineBreakMode = .byWordWrapping
@@ -57,26 +60,44 @@ struct DiffMetrics {
             .height)
     }
 
-    /// 换行模式的行高。纯 ASCII 且必然放得下一行时直接返回，其余按与绘制相同的 cell 实测。
+    /// 换行模式的行高，按与绘制相同的 cell 实测。
     func wrappedHeight(_ line: DiffLine, width: CGFloat) -> CGFloat {
+        singleRowHeight(line, width: width) ?? max(rowHeight, textHeight(text(line), width: width) + spacing)
+    }
+
+    /// 纯 ASCII 且必然放得下一行时的行高；其余返回 nil，需实测。
+    func singleRowHeight(_ line: DiffLine, width: CGFloat) -> CGFloat? {
         let budget = width - 6 - (line.noNewline ? noNewlineWidth : 0)
         let bytes = line.raw.utf8.count - 1
         if CGFloat(bytes * 4) * charWidth <= budget {
             return rowHeight
         }
         var columns = 0
-        var ascii = true
         for byte in line.raw.utf8.dropFirst().prefix(DiffLine.displayLimit) {
             if byte >= 0x80 {
-                ascii = false
-                break
+                return nil
             }
             columns += byte == 9 ? 4 : 1
         }
-        if ascii, bytes <= DiffLine.displayLimit, CGFloat(columns) * charWidth <= budget {
-            return rowHeight
+        return bytes <= DiffLine.displayLimit && CGFloat(columns) * charWidth <= budget ? rowHeight : nil
+    }
+
+    /// 实测前的占位行高，只用于首屏外的行与滚动条，随后由实测替换。
+    func estimatedHeight(_ line: DiffLine, width: CGFloat) -> CGFloat {
+        let budget = max(width - 6 - (line.noNewline ? noNewlineWidth : 0), charWidth)
+        var ascii = 0
+        var wide = 0
+        for scalar in line.raw.unicodeScalars.dropFirst().prefix(DiffLine.displayLimit) {
+            if scalar == "\t" {
+                ascii += 4
+            } else if scalar.isASCII {
+                ascii += 1
+            } else {
+                wide += 1
+            }
         }
-        return max(rowHeight, textHeight(text(line), width: width) + spacing)
+        let lines = ceil((CGFloat(ascii) * charWidth + CGFloat(wide) * wideWidth) / budget)
+        return max(rowHeight, max(1, lines) * textHeight + spacing)
     }
 }
 

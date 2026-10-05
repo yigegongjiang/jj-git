@@ -88,6 +88,10 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
     private var needsReload = false
     private var state = DiffTableState()
     private var actions: DiffTableActions?
+    /// 换行模式下尚未实测、使用占位高度的行；首屏同步实测，其余分片补算。
+    private var pending = IndexSet()
+    private var textWidth: CGFloat = 0
+    private var measureGeneration = 0
 
     private var viewport: CGFloat {
         scrollView.contentSize.width
@@ -152,15 +156,24 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
         let reload = needsReload
         needsReload = false
         laidOutWidth = width
+        let anchor = visibleAnchor()
         column.width = wrap ? width : max(width, metrics.contentWidth(columns: columns))
-        let textWidth = column.width - DiffMetrics.gutter
-        heights = rows.map { row in
-            switch row.content {
-            case .file, .hunk: DiffMetrics.headerHeight
-            case let .message(text): metrics.textHeight(
+        textWidth = column.width - DiffMetrics.gutter
+        measureGeneration += 1
+        pending = []
+        heights = rows.indices.map { index in
+            switch rows[index].content {
+            case .file, .hunk: return DiffMetrics.headerHeight
+            case let .message(text): return metrics.textHeight(
                     NSAttributedString(string: text, attributes: [.font: metrics.small]), width: width - 24
                 ) + 24
-            case let .line(line): wrap ? metrics.wrappedHeight(line, width: textWidth) : metrics.rowHeight
+            case let .line(line):
+                guard wrap else { return metrics.rowHeight }
+                if let height = metrics.singleRowHeight(line, width: textWidth) {
+                    return height
+                }
+                pending.insert(index)
+                return metrics.estimatedHeight(line, width: textWidth)
             }
         }
         if reload {
@@ -169,14 +182,22 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
             table.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<rows.count))
             refreshVisibleRows()
         }
+        restore(anchor)
+        measureVisible()
+        scheduleRefine()
     }
 
     private func scroll(to row: Int) {
         guard row < rows.count else { return }
+        scroll(top: table.rect(ofRow: row).minY, left: 0)
+        measureVisible()
+    }
+
+    private func scroll(top: CGFloat, left: CGFloat? = nil) {
         table.layoutSubtreeIfNeeded()
         let clip = scrollView.contentView
         let maxY = max(0, table.frame.height - clip.bounds.height)
-        clip.scroll(to: NSPoint(x: 0, y: min(table.rect(ofRow: row).minY, maxY)))
+        clip.scroll(to: NSPoint(x: left ?? clip.bounds.minX, y: min(max(0, top), maxY)))
         scrollView.reflectScrolledClipView(clip)
     }
 
@@ -288,5 +309,75 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
                                                selectable: canEdit(entry) && line.changed, wrap: wrap)
             (view as? DiffLineCell)?.configure(content, metrics: metrics) { actions?.toggle(entry, line, $0) }
         }
+    }
+}
+
+/// 换行行高渐进实测：首屏同步，其余按时间片补算，首屏耗时与差异总行数无关。
+extension DiffTableCoordinator {
+    /// 首个可见行及其上沿到视口顶部的偏移；行高重算后据此恢复，内容不随占位高度跳动。
+    private func visibleAnchor() -> (row: Int, offset: CGFloat)? {
+        let row = table.rows(in: table.visibleRect).location
+        guard row != NSNotFound, row < table.numberOfRows else { return nil }
+        return (row, table.visibleRect.minY - table.rect(ofRow: row).minY)
+    }
+
+    private func restore(_ anchor: (row: Int, offset: CGFloat)?) {
+        guard let anchor, anchor.row < rows.count else { return }
+        scroll(top: table.rect(ofRow: anchor.row).minY + anchor.offset)
+    }
+
+    /// 实测可见行；实测高度可能小于占位，使更多行进入视口，循环直到视口内全部实测。
+    private func measureVisible() {
+        for _ in 0..<16 {
+            guard let range = Range(table.rows(in: table.visibleRect)) else { return }
+            let visible = pending.intersection(IndexSet(integersIn: range))
+            guard !visible.isEmpty else { return }
+            let changed = IndexSet(visible.filter { measure($0) != 0 })
+            if !changed.isEmpty {
+                table.noteHeightOfRows(withIndexesChanged: changed)
+            }
+        }
+    }
+
+    private func measure(_ index: Int) -> CGFloat {
+        pending.remove(index)
+        guard case let .line(line) = rows[index].content else { return 0 }
+        let height = metrics.wrappedHeight(line, width: textWidth)
+        let delta = height - heights[index]
+        heights[index] = height
+        return delta
+    }
+
+    /// 每片约 8ms 后让出主线程，保证滚动与输入响应；内容 / 宽度变化或视图释放后停止。
+    private func scheduleRefine() {
+        guard !pending.isEmpty else { return }
+        let generation = measureGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(1)) { [weak self] in
+            self?.refine(generation)
+        }
+    }
+
+    private func refine(_ generation: Int) {
+        guard generation == measureGeneration else { return }
+        measureVisible()
+        let first = table.rows(in: table.visibleRect).location
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(8))
+        var changed = IndexSet()
+        var above: CGFloat = 0
+        while let index = pending.first, ContinuousClock.now < deadline {
+            let delta = measure(index)
+            if delta != 0 {
+                changed.insert(index)
+                if index < first {
+                    above += delta
+                }
+            }
+        }
+        if !changed.isEmpty {
+            let anchor = above != 0 ? visibleAnchor() : nil
+            table.noteHeightOfRows(withIndexesChanged: changed)
+            restore(anchor)
+        }
+        scheduleRefine()
     }
 }
