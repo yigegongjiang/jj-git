@@ -1,42 +1,44 @@
 import Foundation
 
 extension RepositorySession {
+    /// 选中文件即切到单文件差异；全部差异预览中已读取的内容先行显示，随后按文件刷新。
     func selectFile(_ file: FileChange?, staged: Bool) {
-        if let file, let entry = fileDiffs.first(where: { $0.target.path == file.path && $0.target.staged == staged }) {
-            focusDiff(entry)
-            diffScrollID = entry.id
-            diffScrollRequest += 1
-            return
-        }
-        if selectedStaged != staged, let file {
-            selectChanges(staged: staged)
-            selectedFile = file
-            diffScrollID = DiffTarget(path: file.path, file: file, staged: staged).id
-            return
-        }
-        if preparingDiffOverview, let file {
-            selectedFile = file
+        guard let file else { return selectChanges(staged: staged) }
+        let cached = fileDiffs.first { $0.target.path == file.path && $0.target.staged == staged }?.diff
+        if selectedFile?.path != file.path || selectedStaged != staged {
             selectedLines = []
-            diffScrollID = DiffTarget(path: file.path, file: file, staged: staged).id
-            return
         }
+        diffOverview = false
         fileDiffs = []
+        diffFallback = false
         selectedFile = file
         selectedStaged = staged
-        selectedLines = []
-        diff = nil
+        diff = cached
         reloadSelectedDiff()
     }
 
     func selectChanges(staged: Bool) {
+        diffOverview = true
         selectedStaged = staged
         selectedFile = nil
         selectedLines = []
         fileDiffs = []
         diff = nil
         diffFallback = false
-        diffScrollID = nil
         loadDiffOverview(DiffTarget.changes(status, staged: staged))
+    }
+
+    /// 单文件模式下刷新选中文件；该文件已不在当前列表（暂存 / 放弃 / 提交）时回到全部差异。
+    func refreshChangesDiff() {
+        guard !diffOverview else {
+            return loadDiffOverview(DiffTarget.changes(status, staged: selectedStaged))
+        }
+        let staged = selectedStaged
+        guard let file = status.changes.first(where: {
+            $0.path == selectedFile?.path && (staged ? $0.staged : $0.unstaged)
+        }) else { return selectChanges(staged: staged) }
+        selectedFile = file
+        reloadSelectedDiff()
     }
 
     /// 行 ID 仅在单文件内唯一，跨文件选中前清空行选择。
@@ -46,9 +48,6 @@ extension RepositorySession {
         }
         selectedFile = entry.target.file
         selectedStaged = entry.target.staged
-        if section == .history {
-            selectedCommitFile = commitDetail?.files.first { $0.path == entry.target.path }
-        }
         diff = entry.diff
     }
 
@@ -57,8 +56,6 @@ extension RepositorySession {
         diffGeneration += 1
         let generation = diffGeneration
         let previous = fileDiffs
-        let wasFallback = diffFallback
-        preparingDiffOverview = !targets.isEmpty
         guard !targets.isEmpty else {
             fileDiffs = []; diff = nil; selectedFile = nil; loadingDiff = false; diffFallback = false
             return
@@ -73,44 +70,41 @@ extension RepositorySession {
                 // 批量超时、输出上限或文件瞬时消失均退回单文件；上级取消不触发回退。
             }
             guard !Task.isCancelled, generation == diffGeneration else { return }
-            preparingDiffOverview = false
             if let prepared, !prepared.isEmpty {
-                let focused = prepared.first {
-                    $0.target.path == (commit == nil ? selectedFile?.path : selectedCommitFile?.path)
-                        && (commit != nil || $0.target.staged == selectedStaged)
-                } ?? prepared[0]
-                if diff?.raw != focused.diff.raw {
-                    selectedLines = []
-                }
                 fileDiffs = prepared
                 diffFallback = false
-                focusDiff(focused)
-                if previous.isEmpty, diffScrollID != nil {
-                    diffScrollRequest += 1
+                if commit == nil {
+                    let focused = prepared.first {
+                        $0.target.path == selectedFile?.path && $0.target.staged == selectedStaged
+                    } ?? prepared[0]
+                    focusDiff(focused)
+                } else {
+                    diff = prepared[0].diff
                 }
                 loadingDiff = false
             } else {
-                fallbackDiff(targets, commit: commit, preservingSelection: wasFallback)
+                fallbackDiff(targets, commit: commit)
             }
         }
     }
 
-    private func fallbackDiff(_ targets: [DiffTarget], commit: GitCommit?, preservingSelection: Bool) {
+    /// 全部差异读取失败时显示单文件，但保持全部差异模式，后续刷新继续尝试全量读取。
+    private func fallbackDiff(_ targets: [DiffTarget], commit: GitCommit?) {
         fileDiffs = []
         loadingDiff = false
-        diffFallback = targets.count > 1
         if let commit {
             selectedCommit = commit
             selectCommitFile(commitDetail?.files.first)
         } else {
-            let target = preservingSelection ? targets.first {
-                $0.path == selectedFile?.path && $0.staged == selectedStaged
-            } ?? targets[0] : targets[0]
-            if selectedFile == target.file, selectedStaged == target.staged, diff != nil {
-                reloadSelectedDiff()
-            } else {
-                selectFile(target.file, staged: target.staged)
+            let target = targets.first { $0.path == selectedFile?.path && $0.staged == selectedStaged } ?? targets[0]
+            if selectedFile != target.file || selectedStaged != target.staged || diff == nil {
+                selectedLines = []
+                diff = nil
+                selectedFile = target.file
+                selectedStaged = target.staged
             }
+            reloadSelectedDiff()
         }
+        diffFallback = targets.count > 1
     }
 }

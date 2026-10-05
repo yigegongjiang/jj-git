@@ -52,8 +52,6 @@ struct DiffTableView: NSViewRepresentable {
     let entries: [FileDiff]
     let wrap: Bool
     let state: DiffTableState
-    let scrollRequest: Int
-    let scrollTarget: String?
     let actions: DiffTableActions
 
     func makeCoordinator() -> DiffTableCoordinator {
@@ -82,14 +80,12 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
     private var metrics = DiffMetrics()
     private var rows: [DiffRow] = []
     private var heights: [CGFloat] = []
-    private var fileRows: [String: Int] = [:]
     private var key: [DiffTarget] = []
     private var raws: [String] = []
     private var wrap = false
     private var columns = 0
     private var laidOutWidth: CGFloat = -1
     private var needsReload = false
-    private var scrollRequest = 0
     private var state = DiffTableState()
     private var actions: DiffTableActions?
 
@@ -129,10 +125,6 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
             wrap = view.wrap
             state = view.state
             rows = view.entries.flatMap(DiffRow.make)
-            fileRows = [:]
-            for (index, row) in rows.enumerated() where fileRows[row.entry.id] == nil {
-                fileRows[row.entry.id] = index
-            }
             columns = view.entries.map(\.diff.maxColumns).max() ?? 0
             scrollView.hasHorizontalScroller = !wrap
             laidOutWidth = -1
@@ -141,12 +133,9 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
             state = view.state
             refreshVisibleRows()
         }
-        if view.scrollRequest != scrollRequest, let target = view.scrollTarget, let row = fileRows[target] {
-            scroll(to: row)
-        } else if idsChanged {
+        if idsChanged {
             scroll(to: 0)
         }
-        scrollRequest = view.scrollRequest
     }
 
     /// 宽度变化时重算列宽与行高；拖动缩放窗口期间推迟到结束，避免逐帧测量。

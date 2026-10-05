@@ -26,8 +26,8 @@ final class RepositorySession: Identifiable {
     var selectedStaged = false
     var diff: TextDiff?
     var fileDiffs: [FileDiff] = []
-    var diffScrollID: String?
-    var diffScrollRequest = 0
+    /// true = 全部差异（首次进入 / 手动触发）；选中单个文件后为 false，刷新时只读取该文件。
+    var diffOverview = true
     var diffFallback = false
     var selectedLines: Set<Int> = []
     var message = ""
@@ -50,7 +50,6 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored var diffTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var referenceKey = ""
-    @ObservationIgnored var preparingDiffOverview = false
     @ObservationIgnored var diffGeneration = 0
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var refreshFailure: String?
@@ -191,7 +190,7 @@ final class RepositorySession: Identifiable {
             if changed {
                 selectedLines = []
             }
-            loadDiffOverview(DiffTarget.changes(status, staged: selectedStaged))
+            refreshChangesDiff()
         }
     }
 }
@@ -202,7 +201,6 @@ extension RepositorySession {
         self.section = section
         fileDiffs = []
         diff = nil
-        diffScrollID = nil
         if section == .changes {
             detailTask?.cancel()
             selectChanges(staged: false)
@@ -216,7 +214,6 @@ extension RepositorySession {
     }
 
     private func loadFileDiff(clearSelection: Bool) {
-        preparingDiffOverview = false
         diffTask?.cancel()
         diffGeneration += 1
         let generation = diffGeneration
@@ -251,11 +248,9 @@ extension RepositorySession {
         detailTask?.cancel()
         diffTask?.cancel()
         diffGeneration += 1
-        preparingDiffOverview = false
         selectedCommit = commit
         fileDiffs = []
         diffFallback = false
-        diffScrollID = nil
         loadingDiff = false
         commitDetail = nil
         selectedCommitFile = nil
@@ -268,25 +263,30 @@ extension RepositorySession {
                 try Task.checkCancellation()
                 guard selectedCommit?.id == commit.id else { return }
                 commitDetail = detail
-                selectedCommitFile = detail.files.first
-                loadDiffOverview(detail.files.map { DiffTarget(path: $0.path) }, commit: commit)
+                showCommitOverview()
             } catch is CancellationError { return } catch { self.error = error.localizedDescription }
         }
     }
 
+    /// 全部差异时不选中文件，点击任一文件（含第一个）都能切到单文件。
+    func showCommitOverview() {
+        guard let selectedCommit, let commitDetail else { return }
+        selectedCommitFile = nil
+        diff = nil
+        loadDiffOverview(commitDetail.files.map { DiffTarget(path: $0.path) }, commit: selectedCommit)
+    }
+
+    /// 提交内容不变，全部差异中已读取的文件直接复用。
     func selectCommitFile(_ file: CommitFile?) {
-        if let file, let entry = fileDiffs.first(where: { $0.target.path == file.path }) {
-            focusDiff(entry)
-            diffScrollID = entry.id
-            diffScrollRequest += 1
-            return
-        }
         diffTask?.cancel()
         diffGeneration += 1
         let generation = diffGeneration
+        let cached = fileDiffs.first { $0.target.path == file?.path }?.diff
+        fileDiffs = []
+        diffFallback = false
         selectedCommitFile = file
-        diff = nil
-        guard let file, let selectedCommit else { loadingDiff = false; return }
+        diff = cached
+        guard let file, let selectedCommit, cached == nil else { loadingDiff = false; return }
         loadingDiff = true
         diffTask = Task { [weak self] in
             guard let self else { return }

@@ -37,8 +37,7 @@ struct DiffView: View {
             } else if entries.isEmpty {
                 EmptyState(title: "无差异", symbol: "doc.text.magnifyingglass")
             } else {
-                DiffTableView(entries: entries, wrap: wrap, state: state, scrollRequest: session.diffScrollRequest,
-                              scrollTarget: session.diffScrollID, actions: actions)
+                DiffTableView(entries: entries, wrap: wrap, state: state, actions: actions)
             }
         }
         .dismissConfirmationOnBackgroundClick(isPresented: Binding(
