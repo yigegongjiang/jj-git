@@ -153,9 +153,21 @@ struct ChangeList: View {
         session.selectChanges(staged: staged)
     }
 
-    private func transfer(_ files: [FileChange]) {
-        guard !files.isEmpty else { return }
-        session.perform(staged ? .unstage(files) : .stage(files), title: staged ? "取消暂存" : "暂存")
+    private func transfer(_ targets: [FileChange]) {
+        guard !targets.isEmpty, session.operation == nil else { return }
+        // 选中项全部被转移时改选其后一项（末尾则前一项）并预览，便于连续按空格逐个处理。
+        let ids = Set(targets.map(\.id))
+        let next = !selection.isEmpty && selection.isSubset(of: ids) ? nextSelection(after: ids) : nil
+        session.perform(staged ? .unstage(targets) : .stage(targets), title: staged ? "取消暂存" : "暂存")
+        if let next {
+            selection = [next.id]
+        }
+    }
+
+    private func nextSelection(after ids: Set<String>) -> FileChange? {
+        guard let last = files.lastIndex(where: { ids.contains($0.id) }) else { return nil }
+        return files[(last + 1)...].first { !ids.contains($0.id) }
+            ?? files[..<last].last { !ids.contains($0.id) }
     }
 }
 
