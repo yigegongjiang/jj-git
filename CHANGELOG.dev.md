@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.51] - 2026-10-05
+
+### Changed
+
+- 启动时只加载当前标签，其余标签保持未挂载，点击时再加载；当前标签无法打开时自动切到第一个可打开的标签
+  - `Workspace.restore()` 只 `open` 当前标签，失败则按标签顺序回退；移除 `open(_:select:)` 参数与后台挂载分支
+
 ## [0.4.50] - 2026-10-05
 
 ### Added
