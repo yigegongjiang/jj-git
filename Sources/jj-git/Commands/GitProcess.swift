@@ -25,6 +25,9 @@ struct GitOutput: Sendable {
     }
 }
 
+/// 收到 stderr 最新一行（`--progress` 进度 / hooks 输出）；在后台队列调用。
+typealias GitProgressHandler = @Sendable (String) -> Void
+
 /// 每次调用独立进程；不经过 shell，取消与超时会终止整个进程组。
 enum GitProcess {
     private static let detected = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
@@ -32,7 +35,7 @@ enum GitProcess {
 
     static func run(
         at directory: String, _ arguments: [String], input: Data? = nil,
-        accepted: Set<Int32> = [0], timeout: TimeInterval? = nil
+        accepted: Set<Int32> = [0], timeout: TimeInterval? = nil, progress: GitProgressHandler? = nil
     ) async throws -> GitOutput {
         let config = AppConfig.current.git
         let executable = config.executable.isEmpty ? detected : config.executable
@@ -40,7 +43,8 @@ enum GitProcess {
             throw GitFailure(message: "config.jsonc git.executable 不可执行：\(executable)")
         }
         let timeout = timeout ?? TimeInterval(config.timeoutSeconds)
-        let execution = GitExecution(executable: executable, outputLimit: config.outputLimitMiB * 1024 * 1024)
+        let execution = GitExecution(executable: executable, outputLimit: config.outputLimitMiB * 1024 * 1024,
+                                     progress: progress)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
@@ -74,14 +78,17 @@ enum GitProcess {
 private final class GitExecution: @unchecked Sendable {
     private let executable: String
     private let outputLimit: Int
+    private let progress: GitProgressHandler?
     private let lock = NSLock()
     private var process: Process?
     private var cancelled = false
     private var failure: GitFailure?
+    private var reported: String?
 
-    init(executable: String, outputLimit: Int) {
+    init(executable: String, outputLimit: Int, progress: GitProgressHandler?) {
         self.executable = executable
         self.outputLimit = outputLimit
+        self.progress = progress
     }
 
     func cancel(failure reason: GitFailure? = nil) {
@@ -124,11 +131,41 @@ private final class GitExecution: @unchecked Sendable {
         command.standardOutput = stdout
         command.standardError = stderr
         command.standardInput = stdin
+        // outputs[1] = stderr：进度与 hooks 输出所在。
         try execute(command, timeout: timeout, outputs: [outputURL, errorURL])
         let errors = try readBounded(errorURL)
         return try GitOutput(data: readBounded(outputURL),
-                             error: String(bytes: errors, encoding: .utf8) ?? "Git error output is not UTF-8.",
+                             error: String(bytes: errors, encoding: .utf8).map(Self.collapse)
+                                 ?? "Git error output is not UTF-8.",
                              status: command.terminationStatus)
+    }
+
+    /// `--progress` 用 `\r` 原地刷新同一行；每行只保留最终状态，供提示 / 错误 / 日志使用。
+    private static func collapse(_ text: String) -> String {
+        guard text.utf8.contains(0x0D) else { return text }
+        return text.components(separatedBy: "\n")
+            .map { $0.components(separatedBy: "\r").last { !$0.isEmpty } ?? "" }
+            .joined(separator: "\n")
+    }
+
+    /// 仅在计时器队列调用（同一 timer 串行执行）。
+    private func reportProgress(_ url: URL) {
+        guard let progress, let line = latestLine(url), line != reported else { return }
+        reported = line
+        progress(line)
+    }
+
+    /// 只读 stderr 末尾 4 KiB，取最后一个非空片段；不随输出总量增长。
+    private func latestLine(_ url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd(), size > 0 else { return nil }
+        try? handle.seek(toOffset: size > 4096 ? size - 4096 : 0)
+        guard let data = try? handle.readToEnd() else { return nil }
+        let segments = data.split(whereSeparator: { $0 == 0x0A || $0 == 0x0D })
+        // 截断点可能落在多字节字符中间，丢弃无法解码的片段。
+        return segments.reversed().lazy.compactMap { String(bytes: $0, encoding: .utf8) }
+            .map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
     }
 
     private func makeCommand(at directory: String, arguments: [String]) -> Process {
@@ -174,6 +211,7 @@ private final class GitExecution: @unchecked Sendable {
         timer.schedule(deadline: .now() + 0.25, repeating: 0.25)
         let limit = outputLimit
         timer.setEventHandler { [weak self] in
+            self?.reportProgress(outputs[1])
             if DispatchTime.now() >= deadline {
                 self?.cancel(failure: GitFailure(message: "Git 操作超时（\(Int(timeout)) 秒）。请检查网络或 Git hooks。",
                                                  timedOut: true))

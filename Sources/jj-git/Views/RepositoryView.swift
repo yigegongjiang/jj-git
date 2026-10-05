@@ -56,13 +56,17 @@ struct RepositoryView: View {
                 .font(.ui(weight: .semibold)).lineLimit(1).help(session.location.root)
             Text("↑\(session.status.ahead) ↓\(session.status.behind)").font(.ui(-2)).foregroundStyle(.secondary)
             Spacer(minLength: 5)
-            Button { session.fetch() } label: {
-                Label("Fetch", systemImage: "arrow.down.to.line")
+            Button { session.fetch() } label: { transferLabel("Fetch", systemImage: "arrow.down.to.line", .fetch) }
+                .disabled(session.remotes.isEmpty || session.operation != nil)
+            Button { session.perform(.pull, title: "Pull") } label: {
+                transferLabel("Pull", systemImage: "arrow.down", .pull)
             }
-            .disabled(session.remotes.isEmpty || session.operation != nil)
-            Button { session.perform(.pull, title: "Pull") } label: { Label("Pull", systemImage: "arrow.down") }
-                .disabled(session.status.upstream.isEmpty || session.operation != nil)
-                .help(pullHelp)
+            .disabled(session.status.upstream.isEmpty || session.operation != nil)
+            .help(pullHelp)
+            // Menu 标签不渲染 ProgressView，进度指示放在菜单前。
+            if session.operationAction?.transfer == .push {
+                ProgressView().controlSize(.mini)
+            }
             Menu {
                 Button("Push…") { dialog = .push(force: false) }
                 Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }
@@ -80,23 +84,35 @@ struct RepositoryView: View {
         }.buttonStyle(.borderless).controlSize(.small).padding(.horizontal, 10).frame(height: 32)
     }
 
+    /// 正在执行的同步操作在其按钮上显示进度，点击处即可看到反馈。
+    private func transferLabel(_ title: String, systemImage: String,
+                               _ transfer: RepositoryAction.Transfer) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            if session.operationAction?.transfer == transfer {
+                ProgressView().controlSize(.mini)
+            } else {
+                Image(systemName: systemImage)
+            }
+        }
+    }
+
     private var statusBar: some View {
         HStack(spacing: 7) {
             if let operation = session.operation {
-                ProgressView().controlSize(.mini)
-                Text(operation + "…")
-                Button("取消") { session.cancelOperation() }.buttonStyle(.borderless)
+                operationStatus(operation)
             } else if !session.notice.isEmpty {
-                Button { showOperationOutput.toggle() } label: {
-                    Label(session.notice.components(separatedBy: "\n").first ?? "操作完成", systemImage: "checkmark.circle")
-                        .lineLimit(1)
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showOperationOutput) {
-                    ScrollView { Text(session.notice).textSelection(.enabled).padding(12) }.themed().frame(
-                        width: 520,
-                        height: 220
-                    )
+                Label(session.notice, systemImage: "checkmark.circle").lineLimit(1).fixedSize()
+                if let summary = session.operationOutput.split(whereSeparator: \.isNewline).first {
+                    Button { showOperationOutput.toggle() } label: {
+                        Text(summary).lineLimit(1).truncationMode(.tail).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain).help("查看完整输出")
+                    .popover(isPresented: $showOperationOutput) {
+                        ScrollView { Text(session.operationOutput).textSelection(.enabled).padding(12) }.themed()
+                            .frame(width: 520, height: 220)
+                    }
                 }
             } else {
                 Text(session.location.root).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
@@ -107,6 +123,36 @@ struct RepositoryView: View {
             }
             Text("\(session.status.changes.count) 个变更").foregroundStyle(.secondary)
         }.font(.ui(-1)).padding(.horizontal, 10).frame(height: 26)
+    }
+}
+
+extension RepositoryView {
+    /// 操作名 + Git 最新输出（阶段 / 百分比 / 速率）+ 已用时间；有百分比时显示确定进度条。
+    private func operationStatus(_ operation: String) -> some View {
+        let line = session.operationProgress
+        let percent = line.flatMap(Self.percent)
+        return Group {
+            if let percent {
+                ProgressView(value: percent, total: 100).progressViewStyle(.linear).frame(width: 80)
+            } else {
+                ProgressView().controlSize(.mini)
+            }
+            Text(line.map { operation + " · " + $0 } ?? operation + "…")
+                .lineLimit(1).truncationMode(.middle).monospacedDigit().help(line ?? operation)
+            if let started = session.operationStarted {
+                Text(timerInterval: started ... .distantFuture, countsDown: false)
+                    .monospacedDigit().foregroundStyle(.secondary).fixedSize()
+            }
+            Button("取消") { session.cancelOperation() }.buttonStyle(.borderless)
+        }
+    }
+
+    /// `Writing objects:  45% (9/20)` 中最后一个百分比。
+    /// `, done.` = 该阶段已结束、下一阶段尚无输出，显示不确定进度而非满格。
+    private static func percent(_ line: String) -> Double? {
+        guard !line.hasSuffix("done."), let match = line.matches(of: /(\d{1,3})%/).last,
+              let value = Double(match.1), value <= 100 else { return nil }
+        return value
     }
 }
 

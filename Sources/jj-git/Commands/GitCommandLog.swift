@@ -33,7 +33,10 @@ enum GitCommandLog {
             bytes = 0
             note = error.localizedDescription
         }
-        let summary = note.split(whereSeparator: \.isNewline).first.map { escape(redact(String($0.prefix(300)))) } ?? ""
+        // `--progress` 的进度行在错误之前输出，优先取 fatal / error 行。
+        let lines = note.split(whereSeparator: \.isNewline)
+        let summary = (lines.first { $0.hasPrefix("fatal:") || $0.hasPrefix("error:") } ?? lines.first)
+            .map { escape(redact(String($0.prefix(300)))) } ?? ""
         let line = [start.formatted(timestamp), "\(milliseconds)", outcome, "\(bytes)", command(arguments), summary]
             .joined(separator: "\t") + "\n"
         let limit = config.maxFileMiB * 1024 * 1024

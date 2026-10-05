@@ -21,20 +21,40 @@ enum RepositoryAction: Sendable {
     case fetch(remote: String)
     case pull
     case push(remote: String, branch: String, lease: String?)
+
+    enum Transfer {
+        case fetch, pull, push
+    }
+
+    /// 工具栏 Fetch / Pull / Push 按钮对应的操作。
+    var transfer: Transfer? {
+        switch self {
+        case .fetch: .fetch
+        case .pull: .pull
+        case .push: .push
+        default: nil
+        }
+    }
 }
 
 actor RepositoryCommand {
     nonisolated let query: RepositoryQuery
     private var running = false
+    /// 当前操作的进度回调；操作结束即清除。
+    private var progress: GitProgressHandler?
 
     init(location: RepositoryLocation) {
         query = RepositoryQuery(location: location)
     }
 
-    func perform(_ action: RepositoryAction) async throws -> String {
+    func perform(_ action: RepositoryAction, progress: GitProgressHandler? = nil) async throws -> String {
         guard !running else { throw GitFailure(message: "当前仓库有操作正在执行。") }
         running = true
-        defer { running = false }
+        self.progress = progress
+        defer {
+            running = false
+            self.progress = nil
+        }
         try Task.checkCancellation()
         switch action {
         case .stage, .unstage, .partial, .discardLines, .discard, .ignore:
@@ -150,7 +170,7 @@ actor RepositoryCommand {
             return try await run(["tag", "-d", "--", name])
         case let .pushTag(name, remote):
             try validateName(remote)
-            return try await run(["push", "--", remote, "refs/tags/\(name):refs/tags/\(name)"],
+            return try await run(["push", "--progress", "--", remote, "refs/tags/\(name):refs/tags/\(name)"],
                                  timeout: Self.networkTimeout)
         case let .addRemote(name, url):
             try validateRemote(name, url: url)
@@ -159,10 +179,10 @@ actor RepositoryCommand {
             return try await editRemote(name, url: url, newName: newName ?? name)
         case let .fetch(remote):
             try validateName(remote)
-            return try await run(["fetch", "--", remote], timeout: Self.networkTimeout)
+            return try await run(["fetch", "--progress", "--", remote], timeout: Self.networkTimeout)
         case .pull:
             let pull = AppConfig.current.pull
-            return try await run(["pull", pull.rebase ? "--rebase" : "--no-rebase"]
+            return try await run(["pull", "--progress", pull.rebase ? "--rebase" : "--no-rebase"]
                 + (pull.autostash ? ["--autostash"] : []), timeout: Self.networkTimeout)
         case let .push(remote, branch, lease):
             return try await push(remote: remote, branch: branch, lease: lease)
@@ -188,7 +208,7 @@ actor RepositoryCommand {
         try validateName(remote)
         let result = try await GitProcess.run(at: query.location.root,
                                               ["ls-remote", "--exit-code", "--refs", "--", remote, reference],
-                                              accepted: [0, 2], timeout: Self.networkTimeout)
+                                              accepted: [0, 2], timeout: Self.networkTimeout, progress: progress)
         if result.status == 2 {
             if reference.hasPrefix("refs/heads/") {
                 return try await run(["branch", "-dr", "--", remote + "/" + reference.dropFirst(11)])
@@ -197,14 +217,14 @@ actor RepositoryCommand {
         }
         let remoteHash = String(result.text.prefix(while: { $0 != "\t" }))
         let lease = expected ?? remoteHash
-        return try await run(["push", "--force-with-lease=\(reference):\(lease)", "--", remote, ":" + reference],
-                             timeout: Self.networkTimeout)
+        return try await run(["push", "--progress", "--force-with-lease=\(reference):\(lease)", "--",
+                              remote, ":" + reference], timeout: Self.networkTimeout)
     }
 
     private func push(remote: String, branch: String, lease: String?) async throws -> String {
         try validateName(remote)
         try await validateBranch(branch)
-        var arguments = ["push", "--set-upstream"]
+        var arguments = ["push", "--progress", "--set-upstream"]
         if let lease {
             guard lease.allSatisfy(\.isHexDigit), [40, 64].contains(lease.count) else {
                 throw GitFailure(message: "缺少远端分支的已知提交，先 Fetch 再进行强制推送。")
@@ -274,7 +294,8 @@ actor RepositoryCommand {
     }
 
     private func run(_ arguments: [String], input: Data? = nil, timeout: TimeInterval? = nil) async throws -> String {
-        let output = try await GitProcess.run(at: query.location.root, arguments, input: input, timeout: timeout)
+        let output = try await GitProcess.run(at: query.location.root, arguments, input: input, timeout: timeout,
+                                              progress: progress)
         return [output.text, output.error].filter { !$0.isEmpty }.joined(separator: "\n")
     }
 }

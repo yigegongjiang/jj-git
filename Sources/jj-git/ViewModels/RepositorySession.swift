@@ -37,7 +37,13 @@ final class RepositorySession: Identifiable {
     var section = RepositorySection.changes
     var error: String?
     var notice = ""
+    /// 最近一次操作的完整输出，点击状态栏提示查看。
+    var operationOutput = ""
     var operation: String?
+    var operationAction: RepositoryAction?
+    /// stderr 最新一行：`--progress` 进度或 hooks 输出。
+    var operationProgress: String?
+    var operationStarted: Date?
     var refreshing = false
     var loadingDiff = false
     var lastRefreshed: Date?
@@ -275,28 +281,50 @@ extension RepositorySession {
     func perform(_ action: RepositoryAction, title: String, completion: (@MainActor () -> Void)? = nil) {
         guard operation == nil else { return }
         operation = title
+        operationAction = action
+        let started = Date()
+        operationStarted = started
         error = nil
         notice = ""
+        operationOutput = ""
         refreshTask?.cancel()
         refreshGeneration += 1
         refreshing = false
+        // 计时器回调可能晚于操作结束到达；开始时间即本次操作的标识。
+        let progress: GitProgressHandler = { [weak self] line in
+            Task { @MainActor [weak self] in
+                guard let self, operationStarted == started else { return }
+                operationProgress = line
+            }
+        }
         operationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let output = try await command.perform(action)
-                notice = output.isEmpty ? "\(title)完成" : String(output.prefix(2000))
+                let output = try await command.perform(action, progress: progress)
+                notice = "\(title)完成 · " + Self.duration(Date().timeIntervalSince(started))
+                operationOutput = String(output.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4000))
             } catch is CancellationError {
                 notice = "操作已取消；正在重新读取仓库状态。"
             } catch {
                 self.error = error.localizedDescription
             }
             operation = nil
+            operationAction = nil
+            operationProgress = nil
+            operationStarted = nil
             refreshing = false
             refresh(forceHistory: true)
             if error == nil, !Task.isCancelled {
                 completion?()
             }
         }
+    }
+
+    /// 0.4s / 12s / 2m05s
+    nonisolated static func duration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        return seconds < 10 ? String(format: "%.1fs", seconds)
+            : total < 60 ? "\(total)s" : String(format: "%dm%02ds", total / 60, total % 60)
     }
 
     /// 上游所在远程，其次 origin，最后第一个远程。
