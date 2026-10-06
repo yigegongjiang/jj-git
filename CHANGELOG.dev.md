@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.55] - 2026-10-06
+
+### Added
+
+- 自动 Fetch：App 位于前台时，当前标签每 5 秒拉取默认远程，待拉取提交数与远程分支随之更新；`refresh.autoFetchSeconds` 调整间隔，0 关闭
+  - `RepositorySession+Sync.autoFetch()` 静默执行 `git fetch`，同一错误只提示一次；手动操作 / 切换标签等待而非终止进行中的 Fetch，避免 SIGKILL 残留 ref `.lock`
+
 ## [0.4.54] - 2026-10-06
 
 ### Added
