@@ -7,6 +7,27 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.53] - 2026-10-06
+
+### Added
+
+- 文件列表按 ⌘C 复制完整路径、⇧⌘C 复制相对路径（多选逐行拼接）；右键菜单显示对应快捷键
+  - `View.copyPathShortcuts` (`onKeyPress`, 仅列表焦点生效) 挂到 `ChangeList` / `history.files`；`MenuAction.shortcut` 仅右键菜单显示，AX 子按钮剔除
+- 侧栏「提交历史」右侧显示当前分支待推送 ↑ / 待拉取 ↓ 提交数
+  - `RepositorySidebar.syncCounts` 读 `status.ahead/behind`，为 0 不显示；新增 `Theme.cyan`
+
+### Changed
+
+- 切换仓库标签改为 ⇧⌘[ / ⇧⌘]；在终端打开 ⌘T，在编辑器打开 ⌘E；提交并推送 ⇧⌘↩
+  - `WorkspaceCommands` / `CommitComposer` 快捷键替换；移除 ⌘⌥←→ / ⌃Tab
+- 提交详情信息区不再随宽度换行，窄宽度时横向滚动
+  - `history.message` 改 2D `ScrollView` + `fixedSize`，`GeometryReader` 保证最小宽度左对齐
+
+### Removed
+
+- 移除打开仓库、扫描目录、查看快捷键、全部暂存、新建分支、Fetch、Pull、Push 到上游的快捷键；快捷键面板不再列出弹窗确认 / 取消
+  - 删 ⌘O / ⇧⌘O / ⇧⌘/ / ⇧⌘A / ⌘B / ⇧⌘F / ⌥⌘P / ⇧⌘U；`heading(shortcut:)` 参数删除；Pull 按钮提示去掉错误的 ⇧⌘P
+
 ## [0.4.52] - 2026-10-05
 
 ### Added
