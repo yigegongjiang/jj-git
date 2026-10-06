@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.57] - 2026-10-06
+
+### Changed
+
+- 工具栏 Push 一键推送到上游，无需弹窗；箭头菜单保留改目标与强制推送
+  - `RepositoryView` Push 拆为 Button(`pushToUpstream`) + chevron Menu；`PushDestination.label` 作 tooltip
+  - `pushToUpstream` 复用 `PushDestination`；`canPush` 增加 unborn 判断
+
 ## [0.4.56] - 2026-10-06
 
 ### Changed
