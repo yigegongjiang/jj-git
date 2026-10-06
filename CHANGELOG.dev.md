@@ -7,6 +7,19 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.54] - 2026-10-06
+
+### Added
+
+- 文件列表：⇧⌘E 在编辑器打开、⇧⌘R 在文件夹中显示（单选），右键菜单同步显示快捷键
+  - `MenuAction.openFile` 统一两项菜单；`menuShortcuts` 按菜单项 `shortcut` 匹配按键，取代 `copyPathShortcuts`
+
+### Fixed
+
+- 快捷键面板、侧栏、文件 / 提交列表、差异、提交详情等滚动区域的滚动条不再遮挡内容
+  - `scrollerGutter()` = `contentMargins(.scrollContent)` 留出覆盖式滚动条宽度；快捷键面板滚动条移入弹窗边距
+  - 差异表：换行宽度与头部按钮扣除 `DiffScrollView.overlayInset`，行背景仍铺满
+
 ## [0.4.53] - 2026-10-06
 
 ### Added
