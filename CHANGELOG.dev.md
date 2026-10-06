@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.56] - 2026-10-06
+
+### Changed
+
+- 自动 Fetch 在 App 位于后台时同样执行，切回时待拉取提交已是最新
+  - `RepositorySession.activate()` 自动 Fetch 循环去掉 `NSApplication.isActive` 判断；兜底轮询仍仅前台
+
 ## [0.4.55] - 2026-10-06
 
 ### Added
