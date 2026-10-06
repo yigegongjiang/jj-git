@@ -59,7 +59,7 @@ struct AppConfig: Codable, Equatable, Sendable {
     struct Refresh: Codable, Equatable, Sendable {
         /// 前台兜底轮询间隔；文件变化本身由 FSEvents 实时触发。
         var pollSeconds = 5
-        /// 当前标签定时 Fetch 默认远程的间隔；0 关闭。
+        /// 当前标签定时 Fetch 默认远程的间隔（含 App 位于后台）；0 关闭。
         var autoFetchSeconds = 5
     }
 

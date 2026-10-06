@@ -104,7 +104,7 @@ final class RepositorySession: Identifiable {
                 let seconds = AppConfig.current.refresh.autoFetchSeconds
                 // 关闭时仍低频循环，配置改回非 0 后无需重新激活标签。
                 do { try await Task.sleep(for: .seconds(seconds == 0 ? 60 : seconds)) } catch { return }
-                if seconds > 0, NSApplication.shared.isActive {
+                if seconds > 0 {
                     await self?.autoFetch()
                 }
             }

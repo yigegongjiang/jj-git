@@ -121,7 +121,7 @@ enum ConfigStore {
         "previewTimeoutMilliseconds": "全部文件差异预处理预算（ms），100–30000；超时回退首文件。",
         "refresh": "状态刷新",
         "pollSeconds": "App 前台兜底轮询间隔（秒），1–600；文件变化另由 FSEvents 触发。",
-        "autoFetchSeconds": "自动 Fetch 默认远程的间隔（秒），0 关闭，1–3600；仅当前标签且 App 位于前台。",
+        "autoFetchSeconds": "自动 Fetch 默认远程的间隔（秒），0 关闭，1–3600；仅当前标签，App 位于后台时同样执行。",
         "tabs": "标签与最近仓库",
         "idleUnloadSeconds": "未激活标签 session 保留时间（秒），1–86400；超时释放，点击重新加载。",
         "recentCount": "⌘P 最近仓库条数，1–100。",
