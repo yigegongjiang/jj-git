@@ -54,6 +54,8 @@ struct KeyboardShortcutsView: View {
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            // 滚动条落在弹窗右边距内，内容仍与搜索框右缘对齐。
+            .scrollerGutter().padding(.trailing, -scrollerWidth)
             HStack {
                 Text("仓库操作需打开仓库；不可用操作以界面状态为准。")
                     .font(.ui(-2)).foregroundStyle(.secondary)
@@ -87,6 +89,8 @@ struct KeyboardShortcutsView: View {
             Shortcut("暂存 / 取消暂存选中文件", "↩ / Space", detail: "焦点在变更文件列表时；也可双击", searchTerms: "return enter 空格"),
             Shortcut("提交", "⌘↩", detail: "本地变更视图，满足提交条件时", searchTerms: "commit return enter"),
             Shortcut("提交并推送", "⇧⌘↩", detail: "本地变更视图，满足提交与推送条件时", searchTerms: "commit push return enter"),
+            Shortcut("文件在编辑器打开", "⇧⌘E", detail: "焦点在文件列表且单选时", searchTerms: "open file editor ide"),
+            Shortcut("文件在文件夹中显示", "⇧⌘R", detail: "焦点在文件列表且单选时", searchTerms: "reveal finder folder"),
             Shortcut("复制完整路径", "⌘C", detail: "焦点在文件列表时；多选逐行拼接", searchTerms: "copy path"),
             Shortcut("复制相对路径", "⇧⌘C", detail: "焦点在文件列表时；多选逐行拼接", searchTerms: "copy relative path")
         ])

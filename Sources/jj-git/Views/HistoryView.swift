@@ -26,9 +26,9 @@ struct HistoryView: View {
                         ScrollView([.horizontal, .vertical]) {
                             Text(detail.message).font(.code()).textSelection(.enabled)
                                 .fixedSize().padding(10)
-                                .frame(minWidth: proxy.size.width, alignment: .leading)
+                                .frame(minWidth: proxy.size.width - scrollerWidth, alignment: .leading)
                                 .accessibilityIdentifier("history.message")
-                        }
+                        }.scrollerGutter([.trailing, .bottom])
                     }
                 } second: {
                     VStack(spacing: 0) {
@@ -54,16 +54,14 @@ struct HistoryView: View {
                                         : []) + fileActions(file))
                                 .tag(file.id).help(file.path)
                             }
-                        }.listStyle(.plain).scrollContentBackground(.hidden)
+                        }.listStyle(.plain).scrollContentBackground(.hidden).scrollerGutter()
                             .accessibilityIdentifier("history.files")
                             .contextMenu(forSelectionType: String.self) { paths in
                                 if paths.count == 1, let file = detail.files.first(where: { paths.contains($0.id) }) {
                                     MenuActionGroups(groups: [fileActions(file)])
                                 }
                             }
-                            .copyPathShortcuts(root: session.location.root) {
-                                session.selectedCommitFile.map { [$0.path] } ?? []
-                            }
+                            .menuShortcuts { session.selectedCommitFile.map(fileActions) ?? [] }
                     }
                 }
             } else {
@@ -74,10 +72,8 @@ struct HistoryView: View {
 
     private func fileActions(_ file: CommitFile) -> [MenuAction] {
         let path = session.location.root + "/" + file.path
-        return [
-            MenuAction(title: "在编辑器打开", enabled: !file.status.hasPrefix("D")) { workspace?.openEditor(path) },
-            MenuAction(title: "在文件夹中显示") { workspace?.revealInFileManager(path) }
-        ] + MenuAction.copyPaths([file.path], root: session.location.root)
+        return MenuAction.openFile(path, editable: !file.status.hasPrefix("D"), workspace: workspace)
+            + MenuAction.copyPaths([file.path], root: session.location.root)
     }
 }
 
@@ -130,7 +126,7 @@ private struct CommitGraphPanel: View {
                         bottom: 0,
                         trailing: 8
                     ))
-                }.listStyle(.plain).scrollContentBackground(.hidden)
+                }.listStyle(.plain).scrollContentBackground(.hidden).scrollerGutter()
                     .accessibilityIdentifier("history.commits")
                     .environment(\.defaultMinListRowHeight, rowHeight)
                     .task(id: selection) {

@@ -75,7 +75,7 @@ struct ContentView: View {
                 WarningBanner {
                     ScrollView {
                         Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                    }.frame(maxHeight: 80)
+                    }.scrollerGutter().frame(maxHeight: 80)
                 } actions: {
                     Button { workspace.error = nil } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("关闭错误提示").help("关闭错误提示")
@@ -116,7 +116,7 @@ struct ContentView: View {
                             }
                         }
                     }
-                }.frame(height: CGFloat(min(workspace.missingRepositories.count, 4)) * 24)
+                }.scrollerGutter().frame(height: CGFloat(min(workspace.missingRepositories.count, 4)) * 24)
             }
         } actions: {
             Button("重新检查") { workspace.checkMissingRepositories() }.help("重新检查全部仓库路径")

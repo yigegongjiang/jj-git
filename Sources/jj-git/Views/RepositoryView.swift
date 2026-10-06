@@ -23,7 +23,7 @@ struct RepositoryView: View {
                 WarningBanner {
                     ScrollView {
                         Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                    }.frame(maxHeight: 80)
+                    }.scrollerGutter().frame(maxHeight: 80)
                 } actions: {
                     Button { session.error = nil } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("关闭错误提示").help("关闭错误提示")
@@ -125,7 +125,8 @@ struct RepositoryView: View {
                     }
                     .buttonStyle(.plain).help("查看完整输出").accessibilityIdentifier("status.output")
                     .popover(isPresented: $showOperationOutput) {
-                        ScrollView { Text(session.operationOutput).textSelection(.enabled).padding(12) }.themed()
+                        ScrollView { Text(session.operationOutput).textSelection(.enabled).padding(12) }
+                            .scrollerGutter().themed()
                             .frame(width: 520, height: 220)
                     }
                 }
@@ -289,8 +290,8 @@ struct RepositorySidebar: View {
                         ForEach(worktrees) { tree in worktreeRow(tree) }
                     }
                 } header: { heading("工作树", key: "worktrees", count: worktrees.count, action: nil) }
-            }.padding(10)
-        }
+            }.padding([.leading, .vertical], 10)
+        }.scrollerGutter()
     }
 
     private func expanded(_ key: String) -> Bool {

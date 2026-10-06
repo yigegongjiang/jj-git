@@ -105,6 +105,11 @@ struct DiffMetrics {
 final class DiffScrollView: NSScrollView {
     var onResize: (() -> Void)?
 
+    /// 覆盖式滚动条占用的右侧宽度：换行正文与头部按钮避开该区域，行背景仍铺满。
+    var overlayInset: CGFloat {
+        scrollerStyle == .overlay ? scrollerWidth : 0
+    }
+
     override func tile() {
         super.tile()
         onResize?()
@@ -335,7 +340,8 @@ final class DiffLineCell: NSView {
 
     override func layout() {
         super.layout()
-        field.frame = NSRect(x: DiffMetrics.gutter, y: top, width: max(0, bounds.width - DiffMetrics.gutter),
+        let trailing = wrap ? (enclosingScrollView as? DiffScrollView)?.overlayInset ?? 0 : 0
+        field.frame = NSRect(x: DiffMetrics.gutter, y: top, width: max(0, bounds.width - DiffMetrics.gutter - trailing),
                              height: wrap ? max(textHeight, bounds.height - spacing) : textHeight)
     }
 

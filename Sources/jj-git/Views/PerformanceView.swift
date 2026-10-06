@@ -54,7 +54,7 @@ struct PerformanceView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: 320).fixedSize(horizontal: false, vertical: true)
+            .scrollerGutter().frame(maxHeight: 320).fixedSize(horizontal: false, vertical: true)
             if let sample {
                 let total = UInt64(tabs.reduce(0) { $0 + ($1.usage?.bytes ?? 0) })
                 let rest = Self.bytes(sample.footprint - min(sample.footprint, total))

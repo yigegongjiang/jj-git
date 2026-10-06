@@ -84,7 +84,7 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
     private var scrollTarget: Int?
 
     private var viewport: CGFloat {
-        scrollView.contentSize.width
+        scrollView.contentSize.width - scrollView.overlayInset
     }
 
     func makeScrollView() -> NSScrollView {
@@ -135,21 +135,21 @@ final class DiffTableCoordinator: NSObject, NSTableViewDataSource, NSTableViewDe
 
     /// 宽度变化时重算列宽与行高；拖动缩放窗口期间推迟到结束，避免逐帧测量。
     private func layoutWidth(reload: Bool = false) {
-        let width = viewport
+        let width = scrollView.contentSize.width
         needsReload = needsReload || reload
         // 首次 update 时尚未布局，宽度为 0：推迟到 tile 拿到宽度后再加载。
         guard width > 0, needsReload || width != laidOutWidth else { return }
         if !needsReload, scrollView.inLiveResize {
             // 拖动缩放期间只跟随列宽，行高在缩放结束后统一重算。
-            column.width = wrap ? width : max(width, metrics.contentWidth(columns: columns))
+            column.width = wrap ? width : max(width, metrics.contentWidth(columns: columns) + scrollView.overlayInset)
             return
         }
         let reload = needsReload
         needsReload = false
         laidOutWidth = width
         let anchor = visibleAnchor()
-        column.width = wrap ? width : max(width, metrics.contentWidth(columns: columns))
-        textWidth = column.width - DiffMetrics.gutter
+        column.width = wrap ? width : max(width, metrics.contentWidth(columns: columns) + scrollView.overlayInset)
+        textWidth = column.width - DiffMetrics.gutter - (wrap ? scrollView.overlayInset : 0)
         measureGeneration += 1
         pending = []
         heights = rows.indices.map { index in

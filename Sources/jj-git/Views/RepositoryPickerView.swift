@@ -50,7 +50,7 @@ struct RepositoryPickerView: View {
                             }
                         }.padding(.vertical, 4)
                     }
-                    .frame(maxHeight: 520).fixedSize(horizontal: false, vertical: true)
+                    .scrollerGutter().frame(maxHeight: 520).fixedSize(horizontal: false, vertical: true)
                     .onChange(of: index) { _, value in proxy.scrollTo(value) }
                 }
             }

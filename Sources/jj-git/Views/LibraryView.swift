@@ -66,8 +66,9 @@ struct LibraryView: View {
                         }
                     }
                 }
-                .padding(10)
+                .padding([.leading, .vertical], 10)
             }
+            .scrollerGutter()
             Spacer(minLength: 0)
             if workspace.scanning {
                 HStack {

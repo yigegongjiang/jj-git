@@ -47,6 +47,16 @@ struct NamePrompt: View {
     }
 }
 
+/// 覆盖式滚动条宽度（含悬停展开）；滚动内容右侧让出该宽度，滚动条不遮挡内容。
+@MainActor let scrollerWidth = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
+
+extension View {
+    /// 滚动内容在滚动条所在边留出位置（默认右侧）；滚动条仍贴边显示。
+    func scrollerGutter(_ edges: Edge.Set = .trailing) -> some View {
+        contentMargins(edges, scrollerWidth, for: .scrollContent)
+    }
+}
+
 /// 提醒的公共视觉与布局；内容、操作与业务状态由调用方提供。
 struct WarningBanner<Content: View, Actions: View>: View {
     @ViewBuilder let content: () -> Content

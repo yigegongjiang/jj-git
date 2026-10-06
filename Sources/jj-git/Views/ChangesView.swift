@@ -91,7 +91,7 @@ struct ChangeList: View {
                         .tag(file.id).help(file.path)
                     }
                 }
-                .listStyle(.plain).scrollContentBackground(.hidden)
+                .listStyle(.plain).scrollContentBackground(.hidden).scrollerGutter()
                 .accessibilityIdentifier(listID)
                 // 双击 / 回车 / 空格暂存或取消暂存；右键作用于选中文件。
                 .contextMenu(forSelectionType: String.self) { ids in
@@ -99,7 +99,7 @@ struct ChangeList: View {
                 } primaryAction: { ids in
                     transfer(files.filter { ids.contains($0.id) })
                 }
-                .copyPathShortcuts(root: session.location.root) { selectedFiles.map(\.path) }
+                .menuShortcuts { fileActions(selectedFiles).flatMap(\.self) }
                 .onKeyPress(.space) {
                     guard !selectedFiles.isEmpty, session.operation == nil else { return .ignored }
                     transfer(selectedFiles)
@@ -170,10 +170,7 @@ struct ChangeList: View {
         let copies = MenuAction.copyPaths(targets.map(\.path), root: session.location.root)
         guard targets.count == 1, let file = targets.first else { return [actions, copies] }
         let path = session.location.root + "/" + file.path
-        return [actions, [
-            MenuAction(title: "在编辑器打开") { workspace.openEditor(path) },
-            MenuAction(title: "在文件夹中显示") { workspace.revealInFileManager(path) }
-        ] + copies]
+        return [actions, MenuAction.openFile(path, workspace: workspace) + copies]
     }
 
     private func reveal(_ file: FileChange) {

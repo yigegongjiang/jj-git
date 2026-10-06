@@ -4,7 +4,7 @@ import SwiftUI
 struct MenuAction {
     let title: String
     var enabled = true
-    /// 仅在右键菜单中显示提示；实际按键由 `copyPathShortcuts` 等处理。
+    /// 右键菜单中显示提示；实际按键由 `menuShortcuts` 处理。
     var shortcut: KeyboardShortcut?
     let action: () -> Void
 }
@@ -18,6 +18,16 @@ extension MenuAction {
         MenuAction(title: "复制完整路径", shortcut: KeyboardShortcut("c")) {
             copyToPasteboard(pathText(paths, root: root))
         }]
+    }
+
+    /// 单个文件：在编辑器打开 / 在文件夹中显示。
+    @MainActor
+    static func openFile(_ path: String, editable: Bool = true, workspace: Workspace?) -> [MenuAction] {
+        [MenuAction(title: "在编辑器打开", enabled: editable,
+                    shortcut: KeyboardShortcut("e", modifiers: [.command, .shift])) { workspace?.openEditor(path) },
+         MenuAction(title: "在文件夹中显示", shortcut: KeyboardShortcut("r", modifiers: [.command, .shift])) {
+             workspace?.revealInFileManager(path)
+         }]
     }
 }
 
@@ -59,14 +69,18 @@ extension View {
             .accessibilityChildren { MenuActionGroups(groups: [actions]) }
     }
 
-    /// 焦点在文件列表时：⌘C 复制完整路径，⇧⌘C 复制相对路径；只作用于该列表，文本视图的 ⌘C 不受影响。
-    /// `paths` 为空时放行按键。
-    func copyPathShortcuts(root: String, paths: @escaping () -> [String]) -> some View {
-        onKeyPress(characters: CharacterSet(charactersIn: "cC"), phases: .down) { press in
-            let paths = paths()
-            let full = press.modifiers == .command
-            guard full || press.modifiers == [.command, .shift], !paths.isEmpty else { return .ignored }
-            copyToPasteboard(pathText(paths, root: full ? root : nil))
+    /// 焦点在列表时按菜单项快捷键执行可用项；只作用于该列表，文本视图的 ⌘C 等不受影响。
+    /// 无匹配可用项时放行按键。
+    func menuShortcuts(_ actions: @escaping () -> [MenuAction]) -> some View {
+        onKeyPress(phases: .down) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            let key = String(press.key.character).lowercased()
+            let match = actions().first { action in
+                guard action.enabled, let shortcut = action.shortcut else { return false }
+                return String(shortcut.key.character) == key && shortcut.modifiers == press.modifiers
+            }
+            guard let match else { return .ignored }
+            match.action()
             return .handled
         }
     }
