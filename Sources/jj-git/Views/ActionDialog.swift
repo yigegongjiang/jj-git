@@ -199,6 +199,10 @@ struct PushDestination {
     let branch: String
     let lease: String?
 
+    var label: String {
+        "\(remote)/\(branch)"
+    }
+
     @MainActor
     init(session: RepositorySession) {
         remote = session.defaultRemote

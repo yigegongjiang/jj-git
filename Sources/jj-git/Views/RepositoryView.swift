@@ -12,7 +12,14 @@ struct RepositoryView: View {
     }
 
     private var canPush: Bool {
-        !session.remotes.isEmpty && !session.status.detached && session.operation == nil
+        !session.remotes.isEmpty && !session.status.detached && !session.status.unborn && session.operation == nil
+    }
+
+    private var pushActions: [MenuAction] {
+        [
+            MenuAction(title: "Push 到…", enabled: canPush) { dialog = .push(force: false) },
+            MenuAction(title: "强制推送（force-with-lease）…", enabled: canPush) { dialog = .push(force: true) }
+        ]
     }
 
     var body: some View {
@@ -71,20 +78,21 @@ struct RepositoryView: View {
             }
             .disabled(session.status.upstream.isEmpty || session.operation != nil)
             .help(pullHelp).accessibilityIdentifier("toolbar.pull")
-            // Menu 标签不渲染 ProgressView，进度指示放在菜单前。
-            if session.operationAction?.transfer == .push {
-                ProgressView().controlSize(.mini)
+            // 主按钮直接推送到上游；箭头菜单改目标 / 强制推送。
+            HStack(spacing: 2) {
+                Button { session.pushToUpstream() } label: {
+                    transferLabel("Push", systemImage: "arrow.up", .push)
+                }
+                .help("Push 到 \(PushDestination(session: session).label)").accessibilityIdentifier("toolbar.push")
+                Menu {
+                    MenuActionGroups(groups: [pushActions])
+                } label: { Image(systemName: "chevron.down") }
+                    .menuIndicator(.hidden).fixedSize()
+                    .help("更多推送选项").accessibilityLabel("更多推送选项")
+                    .accessibilityIdentifier("toolbar.push-menu")
+                    .accessibilityMenuActions(pushActions)
             }
-            Menu {
-                Button("Push…") { dialog = .push(force: false) }
-                Button("强制推送（force-with-lease）…") { dialog = .push(force: true) }
-            } label: { Label("Push", systemImage: "arrow.up") }
-                .fixedSize().disabled(!canPush)
-                .accessibilityLabel("Push").accessibilityIdentifier("toolbar.push")
-                .accessibilityMenuActions([
-                    MenuAction(title: "Push…", enabled: canPush) { dialog = .push(force: false) },
-                    MenuAction(title: "强制推送（force-with-lease）…", enabled: canPush) { dialog = .push(force: true) }
-                ])
+            .disabled(!canPush)
             ThemedDivider().frame(height: 16)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
                 .help("在终端打开 ⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")

@@ -15,11 +15,9 @@ extension RepositorySession {
 
     /// 直接推送当前分支到上游（无上游时推送到默认远程的同名分支并建立跟踪）。
     func pushToUpstream() {
-        let remote = defaultRemote
-        guard !remote.isEmpty, !status.detached, !status.unborn else { return }
-        let branch = status.upstream.hasPrefix(remote + "/")
-            ? String(status.upstream.dropFirst(remote.count + 1)) : status.branch
-        perform(.push(remote: remote, branch: branch, lease: nil), title: "Push")
+        let destination = PushDestination(session: self)
+        guard !destination.remote.isEmpty, !status.detached, !status.unborn else { return }
+        perform(.push(remote: destination.remote, branch: destination.branch, lease: nil), title: "Push")
     }
 
     /// 静默 Fetch：不占用操作状态栏；同一错误只提示一次，成功后清除。
