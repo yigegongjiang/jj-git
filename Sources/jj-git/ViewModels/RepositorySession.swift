@@ -49,10 +49,14 @@ final class RepositorySession: Identifiable {
     var lastRefreshed: Date?
     var interruptedOperation: String?
 
-    @ObservationIgnored private var active = false
+    @ObservationIgnored private(set) var active = false
     @ObservationIgnored private var refreshPending = false
     @ObservationIgnored private var monitor: RepositoryMonitor?
     @ObservationIgnored private var polling: Task<Void, Never>?
+    @ObservationIgnored private var autoFetching: Task<Void, Never>?
+    /// 进行中的单次自动 Fetch；手动操作开始前等待它结束。
+    @ObservationIgnored var autoFetchRun: Task<Void, Never>?
+    @ObservationIgnored var autoFetchFailure: String?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var detailTask: Task<Void, Never>?
     @ObservationIgnored var diffTask: Task<Void, Never>?
@@ -72,6 +76,7 @@ final class RepositorySession: Identifiable {
 
     deinit {
         polling?.cancel()
+        autoFetching?.cancel()
         refreshTask?.cancel()
         detailTask?.cancel()
         diffTask?.cancel()
@@ -94,6 +99,16 @@ final class RepositorySession: Identifiable {
                 }
             }
         }
+        autoFetching = Task { [weak self] in
+            while !Task.isCancelled {
+                let seconds = AppConfig.current.refresh.autoFetchSeconds
+                // 关闭时仍低频循环，配置改回非 0 后无需重新激活标签。
+                do { try await Task.sleep(for: .seconds(seconds == 0 ? 60 : seconds)) } catch { return }
+                if seconds > 0, NSApplication.shared.isActive {
+                    await self?.autoFetch()
+                }
+            }
+        }
         refresh()
     }
 
@@ -108,6 +123,8 @@ final class RepositorySession: Identifiable {
         monitor = nil
         polling?.cancel()
         polling = nil
+        autoFetching?.cancel()
+        autoFetching = nil
         refreshTask?.cancel()
         refreshTask = nil
         refreshGeneration += 1
@@ -290,6 +307,7 @@ extension RepositorySession {
         refreshTask?.cancel()
         refreshGeneration += 1
         refreshing = false
+        let autoFetch = autoFetchRun
         // 计时器回调可能晚于操作结束到达；开始时间即本次操作的标识。
         let progress: GitProgressHandler = { [weak self] line in
             Task { @MainActor [weak self] in
@@ -299,6 +317,10 @@ extension RepositorySession {
         }
         operationTask = Task { [weak self] in
             guard let self else { return }
+            // 等待进行中的自动 Fetch 结束（通常 < 1s）；用户取消操作时才终止它。
+            if let autoFetch {
+                await withTaskCancellationHandler { await autoFetch.value } onCancel: { autoFetch.cancel() }
+            }
             do {
                 let output = try await command.perform(action, progress: progress)
                 notice = "\(title)完成 · " + Self.duration(Date().timeIntervalSince(started))
@@ -327,12 +349,6 @@ extension RepositorySession {
             : total < 60 ? "\(total)s" : String(format: "%dm%02ds", total / 60, total % 60)
     }
 
-    /// 上游所在远程，其次 origin，最后第一个远程。
-    var defaultRemote: String {
-        remotes.first { status.upstream.hasPrefix($0.name + "/") }?.name
-            ?? remotes.first { $0.name == "origin" }?.name ?? remotes.first?.name ?? ""
-    }
-
     /// 远端分支对应的本地分支：优先跟踪它的分支，其次同名分支。
     func localBranch(for remoteBranch: GitReference) -> GitReference? {
         let locals = references.filter { !$0.remote && !$0.tag }
@@ -353,21 +369,6 @@ extension RepositorySession {
             return
         }
         perform(.checkout(target), title: "检出 \(target.name)")
-    }
-
-    func fetch() {
-        let remote = defaultRemote
-        guard !remote.isEmpty else { return }
-        perform(.fetch(remote: remote), title: "Fetch \(remote)")
-    }
-
-    /// 直接推送当前分支到上游（无上游时推送到默认远程的同名分支并建立跟踪）。
-    func pushToUpstream() {
-        let remote = defaultRemote
-        guard !remote.isEmpty, !status.detached, !status.unborn else { return }
-        let branch = status.upstream.hasPrefix(remote + "/")
-            ? String(status.upstream.dropFirst(remote.count + 1)) : status.branch
-        perform(.push(remote: remote, branch: branch, lease: nil), title: "Push")
     }
 
     func cancelOperation() {

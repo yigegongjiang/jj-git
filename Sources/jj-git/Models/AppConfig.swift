@@ -59,6 +59,8 @@ struct AppConfig: Codable, Equatable, Sendable {
     struct Refresh: Codable, Equatable, Sendable {
         /// 前台兜底轮询间隔；文件变化本身由 FSEvents 实时触发。
         var pollSeconds = 5
+        /// 当前标签定时 Fetch 默认远程的间隔；0 关闭。
+        var autoFetchSeconds = 5
     }
 
     struct Tabs: Codable, Equatable, Sendable {
@@ -124,6 +126,7 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.diff.contextLines = diff.contextLines.clamped(1...20)
         value.diff.previewTimeoutMilliseconds = diff.previewTimeoutMilliseconds.clamped(100...30000)
         value.refresh.pollSeconds = refresh.pollSeconds.clamped(1...600)
+        value.refresh.autoFetchSeconds = refresh.autoFetchSeconds.clamped(0...3600)
         value.tabs.idleUnloadSeconds = tabs.idleUnloadSeconds.clamped(1...86400)
         value.tabs.recentCount = tabs.recentCount.clamped(1...100)
         value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)

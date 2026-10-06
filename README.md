@@ -22,6 +22,6 @@
 - **仓库与 Worktree**：批量导入、分组与拖拽排序、多标签、最近仓库筛选、Worktree 切换，恢复标签与窗口布局。
 - **提交历史**：提交图、分支与标签、提交详情，多文件差异连续展示。
 - **变更与提交**：按文件、差异块或行暂存与取消暂存，放弃变更、Amend、提交并推送。
-- **分支与同步**：分支、标签与远程管理，Fetch / Pull / Push，支持 rebase + autostash 与 force-with-lease。
+- **分支与同步**：分支、标签与远程管理，Fetch（含前台定时自动 Fetch）/ Pull / Push，支持 rebase + autostash 与 force-with-lease。
 
 Swift + SwiftUI / macOS 14+ / Dracula 深色主题。
