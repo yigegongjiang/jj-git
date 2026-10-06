@@ -99,6 +99,7 @@ struct ChangeList: View {
                 } primaryAction: { ids in
                     transfer(files.filter { ids.contains($0.id) })
                 }
+                .copyPathShortcuts(root: session.location.root) { selectedFiles.map(\.path) }
                 .onKeyPress(.space) {
                     guard !selectedFiles.isEmpty, session.operation == nil else { return .ignored }
                     transfer(selectedFiles)
@@ -247,7 +248,7 @@ struct CommitComposer: View {
                         submit(push: true, destination: target)
                     }
                 }
-                .keyboardShortcut(.return, modifiers: [.command, .option])
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(!canCommit || session.remotes.isEmpty || session.status.detached)
                 .accessibilityIdentifier("commit.submit-push")
             }.controlSize(.small)

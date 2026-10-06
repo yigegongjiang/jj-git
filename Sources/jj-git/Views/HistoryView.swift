@@ -21,10 +21,14 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             if let detail = session.commitDetail {
                 SplitPane(name: "history.message", vertical: true, initial: 110, minimum: (40, 80)) {
-                    ScrollView {
-                        Text(detail.message).font(.code()).textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                            .accessibilityIdentifier("history.message")
+                    // 不换行：窄宽度时横向滚动，保持 commit / Author 等字段对齐。
+                    GeometryReader { proxy in
+                        ScrollView([.horizontal, .vertical]) {
+                            Text(detail.message).font(.code()).textSelection(.enabled)
+                                .fixedSize().padding(10)
+                                .frame(minWidth: proxy.size.width, alignment: .leading)
+                                .accessibilityIdentifier("history.message")
+                        }
                     }
                 } second: {
                     VStack(spacing: 0) {
@@ -56,6 +60,9 @@ struct HistoryView: View {
                                 if paths.count == 1, let file = detail.files.first(where: { paths.contains($0.id) }) {
                                     MenuActionGroups(groups: [fileActions(file)])
                                 }
+                            }
+                            .copyPathShortcuts(root: session.location.root) {
+                                session.selectedCommitFile.map { [$0.path] } ?? []
                             }
                     }
                 }

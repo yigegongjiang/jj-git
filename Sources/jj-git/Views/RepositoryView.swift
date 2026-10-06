@@ -8,7 +8,7 @@ struct RepositoryView: View {
 
     private var pullHelp: String {
         let pull = workspace.config.pull
-        return (pull.rebase ? "Rebase 到上游" : "Merge 上游") + (pull.autostash ? "，本地变更自动贮藏后恢复" : "") + " ⇧⌘P"
+        return (pull.rebase ? "Rebase 到上游" : "Merge 上游") + (pull.autostash ? "，本地变更自动贮藏后恢复" : "")
     }
 
     private var canPush: Bool {
@@ -87,11 +87,11 @@ struct RepositoryView: View {
                 ])
             ThemedDivider().frame(height: 16)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
-                .help("在终端打开 ⇧⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")
+                .help("在终端打开 ⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")
             Button { workspace.openEditor(session.location.root) } label: {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
             }
-            .help("在编辑器打开 ⇧⌘E").accessibilityLabel("在编辑器打开").accessibilityIdentifier("toolbar.editor")
+            .help("在编辑器打开 ⌘E").accessibilityLabel("在编辑器打开").accessibilityIdentifier("toolbar.editor")
             Button { session.refresh(forceHistory: true) } label: { Image(systemName: "arrow.clockwise") }
                 .help("刷新 ⌘R").disabled(session.operation != nil)
                 .accessibilityLabel("刷新").accessibilityIdentifier("toolbar.refresh")
@@ -196,8 +196,23 @@ struct RepositorySidebar: View {
         return "未暂存 \(changes.count(where: \.unstaged))，已暂存 \(changes.count(where: \.staged))"
     }
 
-    private func countBadge(_ count: Int, color: Color) -> some View {
-        Text("\(count)").font(.ui(-2, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.window)
+    /// 当前分支相对上游待推送 / 待拉取的提交数；无上游时不显示。
+    @ViewBuilder private var syncCounts: some View {
+        let status = session.status
+        if status.ahead > 0 {
+            countBadge(status.ahead, prefix: "↑", color: Theme.accent).help("待推送 \(status.ahead) 个提交")
+        }
+        if status.behind > 0 {
+            countBadge(status.behind, prefix: "↓", color: Theme.cyan).help("待拉取 \(status.behind) 个提交")
+        }
+    }
+
+    private var syncSummary: String {
+        "待推送 \(session.status.ahead)，待拉取 \(session.status.behind)"
+    }
+
+    private func countBadge(_ count: Int, prefix: String = "", color: Color) -> some View {
+        Text("\(prefix)\(count)").font(.ui(-2, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.window)
             .padding(.horizontal, 5).frame(minWidth: 16, minHeight: 15)
             .background(color, in: Capsule())
     }
@@ -216,12 +231,14 @@ struct RepositorySidebar: View {
                             Spacer(minLength: 0)
                             if section == .changes {
                                 changeCounts
+                            } else {
+                                syncCounts
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                     }.buttonStyle(.plain).padding(.vertical, 3)
                         .accessibilityLabel(section.rawValue)
-                        .accessibilityValue(section == .changes ? changeSummary : "")
+                        .accessibilityValue(section == .changes ? changeSummary : syncSummary)
                         .accessibilityAddTraits(session.section == section ? .isSelected : [])
                         .accessibilityIdentifier("section.\(section == .changes ? "changes" : "history")")
                 }
@@ -234,7 +251,7 @@ struct RepositorySidebar: View {
                         ForEach(local) { branch in branchRow(branch) }
                     }
                 } header: {
-                    heading("本地分支", key: "localBranches", count: local.count, shortcut: "b") {
+                    heading("本地分支", key: "localBranches", count: local.count) {
                         dialog = .branch(start: "HEAD")
                     }
                 }
@@ -304,7 +321,7 @@ struct RepositorySidebar: View {
     }
 
     private func heading(
-        _ text: String, key: String, count: Int, shortcut: KeyEquivalent? = nil, action: (() -> Void)?
+        _ text: String, key: String, count: Int, action: (() -> Void)?
     ) -> some View {
         HStack {
             Button { workspace.toggleSection(key) } label: {
@@ -320,16 +337,11 @@ struct RepositorySidebar: View {
                 .accessibilityLabel("\(text) \(count)").accessibilityValue(expanded(key) ? "已展开" : "已折叠")
                 .accessibilityIdentifier("heading.\(key)")
             if let action {
-                let button = Button(action: action) { Image(systemName: "plus") }.buttonStyle(.plain)
+                Button(action: action) { Image(systemName: "plus") }.buttonStyle(.plain)
                     .disabled(session.operation != nil || (text != "远程" && session.status.unborn))
+                    .help("新建")
                     .accessibilityLabel(text == "远程" ? "添加远程" : "新建\(text == "标签" ? "标签" : "分支")")
                     .accessibilityIdentifier("heading.\(key).add")
-                if let shortcut {
-                    button.keyboardShortcut(shortcut, modifiers: .command)
-                        .help("新建（⌘\(shortcut.character.uppercased())）")
-                } else {
-                    button.help("新建")
-                }
             }
         }.padding(.top, 4)
     }

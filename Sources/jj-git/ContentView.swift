@@ -53,7 +53,7 @@ struct ContentView: View {
                     Image(systemName: "keyboard")
                 }
                 .buttonStyle(.borderless).padding(.horizontal, 8)
-                .accessibilityLabel("快捷键").help("查看快捷键（⇧⌘/）")
+                .accessibilityLabel("快捷键").help("查看快捷键")
                 Button("重启应用", systemImage: "arrow.clockwise.circle") { workspace.restart() }
                     .buttonStyle(.borderless).padding(.horizontal, 8)
                     .help("重新读取配置；有未提交的提交信息或任务进行中时不可重启")
@@ -90,7 +90,7 @@ struct ContentView: View {
                     Text("打开仓库开始工作，或扫描目录批量导入。")
                         .foregroundStyle(.secondary)
                     HStack {
-                        Button("打开仓库…") { workspace.chooseRepository() }.keyboardShortcut("o")
+                        Button("打开仓库…") { workspace.chooseRepository() }
                         Button("扫描目录…") { workspace.chooseRepository(scan: true) }
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)

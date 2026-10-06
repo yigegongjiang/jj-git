@@ -6,7 +6,6 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .help) {
             Button("快捷键…") { workspace.showingKeyboardShortcuts = true }
-                .keyboardShortcut("/", modifiers: [.command, .shift])
         }
         CommandGroup(replacing: .appSettings) {
             Button("安装命令行工具…") { workspace.installCLI() }
@@ -15,11 +14,8 @@ struct WorkspaceCommands: Commands {
             Button("重启应用") { workspace.restart() }.disabled(!workspace.canRestart)
         }
         CommandGroup(replacing: .newItem) {
-            Button("打开仓库…") { workspace.chooseRepository() }.keyboardShortcut("o")
-            Button("扫描目录…") { workspace.chooseRepository(scan: true) }.keyboardShortcut(
-                "o",
-                modifiers: [.command, .shift]
-            )
+            Button("打开仓库…") { workspace.chooseRepository() }
+            Button("扫描目录…") { workspace.chooseRepository(scan: true) }
             // 已有弹窗时 SwiftUI 不会叠加第二个 sheet。
             Button("最近仓库…") {
                 if NSApp.mainWindow?.attachedSheet == nil {
@@ -47,39 +43,34 @@ struct WorkspaceCommands: Commands {
             Button("本地变更") { workspace.selected?.changeSection(.changes) }.keyboardShortcut("2")
             Divider()
             Button("Fetch") { workspace.selected?.fetch() }
-                .keyboardShortcut("f", modifiers: [.command, .shift])
             Button(workspace.config.pull.rebase ? "Pull（Rebase）" : "Pull") {
                 workspace.selected?.perform(.pull, title: "Pull")
             }
-            .keyboardShortcut("p", modifiers: [.command, .option])
             .disabled(workspace.selected?.status.upstream.isEmpty != false)
             Button("Push 到上游") { workspace.selected?.pushToUpstream() }
-                .keyboardShortcut("u", modifiers: [.command, .shift])
                 .disabled(workspace.selected?.status.detached != false || workspace.selected?.remotes.isEmpty != false)
             Divider()
             Button("全部暂存") {
                 if let session = workspace.selected {
                     session.perform(.stage(session.status.changes.filter(\.unstaged)), title: "暂存")
                 }
-            }.keyboardShortcut("a", modifiers: [.command, .shift])
+            }
             Divider()
             Button("在终端打开") {
                 if let path = workspace.library.selectedPath {
                     workspace.openTerminal(path)
                 }
-            }.keyboardShortcut("t", modifiers: [.command, .shift])
+            }.keyboardShortcut("t")
             Button("在编辑器打开") {
                 if let path = workspace.library.selectedPath {
                     workspace.openEditor(path)
                 }
-            }.keyboardShortcut("e", modifiers: [.command, .shift])
+            }.keyboardShortcut("e")
             Button("选择外部编辑器…") { workspace.chooseEditor() }
         }
         CommandGroup(after: .windowArrangement) {
-            Button("下一个仓库标签") { nextTab(1) }.keyboardShortcut(.rightArrow, modifiers: [.command, .option])
-            Button("上一个仓库标签") { nextTab(-1) }.keyboardShortcut(.leftArrow, modifiers: [.command, .option])
-            Button("下一个仓库标签") { nextTab(1) }.keyboardShortcut(.tab, modifiers: [.control])
-            Button("上一个仓库标签") { nextTab(-1) }.keyboardShortcut(.tab, modifiers: [.control, .shift])
+            Button("下一个仓库标签") { nextTab(1) }.keyboardShortcut("]", modifiers: [.command, .shift])
+            Button("上一个仓库标签") { nextTab(-1) }.keyboardShortcut("[", modifiers: [.command, .shift])
         }
     }
 

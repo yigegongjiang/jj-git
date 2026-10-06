@@ -366,7 +366,7 @@ struct SectionTabKey: NSViewRepresentable {
             }
         }
 
-        /// 仅本窗口无弹窗、焦点不在可编辑文本时生效；带修饰键（⌃Tab 切仓库标签等）原样放行。
+        /// 仅本窗口无弹窗、焦点不在可编辑文本时生效；带修饰键的 Tab 原样放行。
         private func toggle(_ event: NSEvent) -> Bool {
             guard event.keyCode == 48, !event.isARepeat,
                   event.modifierFlags.isDisjoint(with: [.command, .option, .control, .shift]),

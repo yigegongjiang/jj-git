@@ -4,17 +4,26 @@ import SwiftUI
 struct MenuAction {
     let title: String
     var enabled = true
+    /// 仅在右键菜单中显示提示；实际按键由 `copyPathShortcuts` 等处理。
+    var shortcut: KeyboardShortcut?
     let action: () -> Void
 }
 
 extension MenuAction {
     /// 复制仓库内相对路径 / 完整路径；多个文件逐行拼接。
     static func copyPaths(_ paths: [String], root: String) -> [MenuAction] {
-        [MenuAction(title: "复制相对路径") { copyToPasteboard(paths.joined(separator: "\n")) },
-         MenuAction(title: "复制完整路径") {
-             copyToPasteboard(paths.map { root + "/" + $0 }.joined(separator: "\n"))
-         }]
+        [MenuAction(title: "复制相对路径", shortcut: KeyboardShortcut("c", modifiers: [.command, .shift])) {
+            copyToPasteboard(pathText(paths, root: nil))
+        },
+        MenuAction(title: "复制完整路径", shortcut: KeyboardShortcut("c")) {
+            copyToPasteboard(pathText(paths, root: root))
+        }]
     }
+}
+
+/// `root` 非空时拼成完整路径。
+private func pathText(_ paths: [String], root: String?) -> String {
+    paths.map { path in root.map { $0 + "/" + path } ?? path }.joined(separator: "\n")
 }
 
 func copyToPasteboard(_ text: String) {
@@ -34,7 +43,7 @@ struct MenuActionGroups: View {
             }
             ForEach(groups[index].indices, id: \.self) { item in
                 let menu = groups[index][item]
-                Button(menu.title, action: menu.action).disabled(!menu.enabled)
+                Button(menu.title, action: menu.action).disabled(!menu.enabled).keyboardShortcut(menu.shortcut)
             }
         }
     }
@@ -43,9 +52,23 @@ struct MenuActionGroups: View {
 extension View {
     /// 可用项同时暴露为命名动作与子按钮（Peekaboo 等只认 AXPress 的工具按子按钮操作）。
     /// 二者都不受 `.disabled` 约束，因此只暴露当前可用项。
+    /// 去掉快捷键提示，避免隐藏子按钮注册按键。
     func accessibilityMenuActions(_ actions: [MenuAction]) -> some View {
-        accessibilityActions { MenuActionGroups(groups: [actions.filter(\.enabled)]) }
-            .accessibilityChildren { MenuActionGroups(groups: [actions.filter(\.enabled)]) }
+        let actions = actions.filter(\.enabled).map { MenuAction(title: $0.title, action: $0.action) }
+        return accessibilityActions { MenuActionGroups(groups: [actions]) }
+            .accessibilityChildren { MenuActionGroups(groups: [actions]) }
+    }
+
+    /// 焦点在文件列表时：⌘C 复制完整路径，⇧⌘C 复制相对路径；只作用于该列表，文本视图的 ⌘C 不受影响。
+    /// `paths` 为空时放行按键。
+    func copyPathShortcuts(root: String, paths: @escaping () -> [String]) -> some View {
+        onKeyPress(characters: CharacterSet(charactersIn: "cC"), phases: .down) { press in
+            let paths = paths()
+            let full = press.modifiers == .command
+            guard full || press.modifiers == [.command, .shift], !paths.isEmpty else { return .ignored }
+            copyToPasteboard(pathText(paths, root: full ? root : nil))
+            return .handled
+        }
     }
 
     func menuActions(_ groups: [[MenuAction]]) -> some View {

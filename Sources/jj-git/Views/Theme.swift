@@ -13,6 +13,7 @@ enum Theme {
     static let deleted = Color(hex: 0xFF5555)
     static let orange = Color(hex: 0xFFB86C)
     static let green = Color(hex: 0x50FA7B)
+    static let cyan = Color(hex: 0x8BE9FD)
     static let graph = [0xFF5555, 0xFFB86C, 0xF1FA8C, 0x50FA7B, 0xBD93F9].map { Color(hex: $0) }
     /// 不在 HEAD 历史中的提交。
     static let notMergedOpacity = 0.4
