@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.59] - 2026-10-07
+
+### Added
+
+- 自定义操作：工具栏 ▷ 菜单执行配置文件 `customActions` 中配置的命令（默认空），作用于当前仓库；支持分支 / SHA 等变量、等待结束显示输出或后台启动
+  - `Models/CustomAction`（数组元素自带缺失键默认值）+ `RepositoryAction.custom` 走 `perform`：运行互斥 / 进度 / 取消 / 状态栏输出
+  - `GitProcess.execute(ProcessCommand)` 抽出通用执行（超时 / 进程组终止 / 输出上限 / 命令记录）；`launch` 不等待，stdio 接 `/dev/null`
+  - `ConfigStore.saveConfig` 支持顶层数组键整体替换；配置说明支持多行注释
+
 ## [0.4.58] - 2026-10-07
 
 ### Added
