@@ -22,6 +22,16 @@ extension DiffLineCell {
         NSNumber(value: selected)
     }
 
+    override func accessibilityHelp() -> String? {
+        guard let line, !line.emphasis.isEmpty else { return nil }
+        let display = line.display as NSString
+        let changes = line.emphasis.filter { NSMaxRange($0) <= display.length }.map {
+            let text = display.substring(with: $0)
+            return text.trimmingCharacters(in: .whitespaces).isEmpty ? "空白" : text
+        }
+        return "行内变化：" + changes.joined(separator: " / ")
+    }
+
     override func accessibilityPerformPress() -> Bool {
         toggle?(false)
         return toggle != nil

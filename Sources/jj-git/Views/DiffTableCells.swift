@@ -47,6 +47,9 @@ struct DiffMetrics {
     func text(_ line: DiffLine) -> NSAttributedString {
         let text = NSMutableAttributedString(string: line.display,
                                              attributes: [.font: code, .foregroundColor: NSColor.labelColor])
+        for range in line.emphasis where NSMaxRange(range) <= text.length {
+            text.addAttribute(.backgroundColor, value: NSColor.black.withAlphaComponent(0.3), range: range)
+        }
         if line.noNewline {
             let hint: [NSAttributedString.Key: Any] = [.font: code, .foregroundColor: NSColor.tertiaryLabelColor]
             text.append(NSAttributedString(string: Self.noNewline, attributes: hint))

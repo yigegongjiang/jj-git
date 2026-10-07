@@ -6,6 +6,8 @@ struct DiffLine: Identifiable, Hashable, Sendable {
     let oldLine: Int?
     let newLine: Int?
     var noNewline = false
+    /// 行内变化在 display 中的 UTF-16 范围；仅用于绘制，不参与补丁。
+    var emphasis: [NSRange] = []
     var kind: Character {
         raw.first ?? " "
     }
@@ -109,6 +111,16 @@ struct TextDiff: Sendable {
         }
         if raw.hasPrefix("diff --cc ") || raw.hasPrefix("diff --combined ") {
             partialRestriction = "请先在编辑器解决冲突，再暂存整个文件。"
+        }
+        highlight(deadline: deadline)
+    }
+
+    private mutating func highlight(deadline: ContinuousClock.Instant?) {
+        guard !binary, partialRestriction == nil else { return }
+        var highlighter = IntralineDiff(deadline: deadline)
+        for index in hunks.indices {
+            guard highlighter.available else { break }
+            highlighter.annotate(&hunks[index].lines)
         }
     }
 
