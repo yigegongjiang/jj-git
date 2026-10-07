@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.58] - 2026-10-07
+
+### Added
+
+- 文本差异增加字符级高亮，精确标出同一行内的多处修改；复杂大差异自动保留整行显示
+  - `IntralineDiff` 使用 Character + CollectionDifference，后台解析配对；30ms / 1M 预算，UTF-16 + tab 映射；AppKit 复用高亮范围
+
 ## [0.4.57] - 2026-10-06
 
 ### Changed
