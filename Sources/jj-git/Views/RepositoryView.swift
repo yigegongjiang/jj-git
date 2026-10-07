@@ -94,6 +94,7 @@ struct RepositoryView: View {
             }
             .disabled(!canPush)
             ThemedDivider().frame(height: 16)
+            CustomActionMenu(workspace: workspace, session: session)
             Button { workspace.openTerminal(session.location.root) } label: { Image(systemName: "terminal") }
                 .help("在终端打开 ⌘T").accessibilityLabel("在终端打开").accessibilityIdentifier("toolbar.terminal")
             Button { workspace.openEditor(session.location.root) } label: {

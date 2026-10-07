@@ -35,7 +35,7 @@ enum ConfigStore {
                 section = String(parts[1])
             }
             guard let note = configNotes[section + "." + parts[1]] ?? configNotes[String(parts[1])] else { return line }
-            return "\(indent)// \(note)\n\(line)"
+            return note.components(separatedBy: "\n").map { "\(indent)// \($0)\n" }.joined() + line
         }
         return Data(("// 修改后重启生效；缺失键 / null 取默认值，越界数值收敛。\n" + lines.joined(separator: "\n")).utf8)
     }
@@ -51,17 +51,21 @@ enum ConfigStore {
             return
         }
         let old = try decode(original, defaults: AppConfig(), comments: true)
-        let before = try JSONSerialization.jsonObject(with: encode(old)) as? [String: [String: Any]] ?? [:]
-        let after = try JSONSerialization.jsonObject(with: encode(config)) as? [String: [String: Any]] ?? [:]
+        let before = try JSONSerialization.jsonObject(with: encode(old)) as? [String: Any] ?? [:]
+        let after = try JSONSerialization.jsonObject(with: encode(config)) as? [String: Any] ?? [:]
         var text = try utf8(original)
         for section in after.keys.sorted() {
-            let values = after[section] ?? [:]
-            let previous = before[section] ?? [:]
-            for key in values.keys.sorted() {
-                guard let value = values[key],
-                      !NSDictionary(dictionary: [key: previous[key] ?? NSNull()]).isEqual(to: [key: value]) else {
-                    continue
+            guard let current = after[section] else { continue }
+            // 数组（customActions）整体比较、整体替换；分组逐键替换。
+            guard let values = current as? [String: Any] else {
+                if !same(before[section], current) {
+                    text = try replacing(current, path: [section], in: text)
                 }
+                continue
+            }
+            let previous = before[section] as? [String: Any] ?? [:]
+            for key in values.keys.sorted() {
+                guard let value = values[key], !same(previous[key], value) else { continue }
                 text = try replacing(value, path: [section, key], in: text)
             }
         }
@@ -69,6 +73,10 @@ enum ConfigStore {
             throw GitFailure(message: "配置写入校验失败，原文件已保留。")
         }
         try write(Data(text.utf8), to: configURL)
+    }
+
+    private static func same(_ old: Any?, _ new: Any) -> Bool {
+        NSDictionary(dictionary: ["value": old ?? NSNull()]).isEqual(to: ["value": new])
     }
 
     static func utf8(_ data: Data) throws -> String {
@@ -127,7 +135,23 @@ enum ConfigStore {
         "recentCount": "⌘P 最近仓库条数，1–100。",
         "commandLog": "Git 命令记录",
         "enabled": "记录每仓库 Git 命令、结果与耗时至 logs/。",
-        "maxFileMiB": "单仓库日志上限（MiB），1–100；超出轮转，仅保留一份 .log.1。"
+        "maxFileMiB": "单仓库日志上限（MiB），1–100；超出轮转，仅保留一份 .log.1。",
+        "customActions": """
+        自定义操作：工具栏 ▷ 菜单按顺序列出，在当前仓库（工作树）目录执行；参数逐项传递，不经 shell。
+          name：菜单显示名；空值使用 executable 文件名。
+          executable：绝对路径（支持 ~/），或在登录 shell PATH 中查找的命令名。
+          arguments：参数数组；${REPO} ${BRANCH} ${SHA} ${REMOTE} 替换为仓库路径 / 当前分支（分离为 HEAD）/ HEAD SHA / 默认远程。
+            同名环境变量 JJ_GIT_REPO / JJ_GIT_BRANCH / JJ_GIT_SHA / JJ_GIT_REMOTE；
+            经 /bin/zsh -c 执行脚本时用 "$JJ_GIT_BRANCH" 引用，避免分支名被 shell 解释。
+          waitForExit：默认 true，状态栏显示进度并可取消，结束后显示输出 / 错误；false 启动后不等待。
+          timeoutSeconds：waitForExit 为 true 时的超时（秒），默认 600，1–86400。
+        示例：
+          "customActions": [
+            { "name": "difftool（已暂存）", "executable": "git", "arguments": ["difftool", "-y", "--cached"] },
+            { "name": "复制分支名", "executable": "/bin/zsh",
+              "arguments": ["-c", "printf %s \\\"$JJ_GIT_BRANCH\\\" | pbcopy"] }
+          ]
+        """
     ]
 
     /// 文件不存在返回 nil。

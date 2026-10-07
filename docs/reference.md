@@ -24,6 +24,7 @@
 - 同步: Fetch / Pull (默认 rebase + autostash) / Push / 强制推送 (工具栏 + 「仓库」菜单)
 - CLI: App 菜单「安装命令行工具…」创建 `~/.local/bin/jj-git` -> 当前 App `Contents/Resources/jj-git-cli`; `jj-git [path]` (默认当前目录), 复用运行实例; shell PATH 需包含 `~/.local/bin`; App 移动后重新安装
 - 工具: 终端 ⌘T (默认 iTerm 优先) / 编辑器 ⌘E / 刷新 ⌘R
+- 自定义操作: 工具栏 ▷ 菜单, 按 `config.jsonc` `customActions` 顺序列出 (默认空, 无配置界面); 当前仓库 (工作树) 目录执行, 参数数组不经 shell; `${REPO}` `${BRANCH}` `${SHA}` `${REMOTE}` 替换 + 同名 `JJ_GIT_*` 环境变量; `waitForExit` (默认 true) 走操作状态栏: 进度 / 取消 / 输出 / 错误 (含退出码), 超时 `timeoutSeconds` 默认 600 (1–86400); false 启动即返回, 不收集输出; 命令记录同 Git
 - 配置: ⌘, 打开 `~/.config/jj-git/config.jsonc`; 外部修改后点击顶部「重启应用」生效
 - 性能: 顶部「性能」(「重启应用」右侧) 弹窗, 打开时测量一次 (口径不含面板自身: 内存取弹窗前采样, CPU 取弹窗动画结束后 1 秒均值), 「重新测量」再测, 不持续采样; 进程 CPU / 内存 (同活动监视器) / 峰值 / 常驻 / 线程 / 本进程与 Git 累计 CPU 时间 + 各标签内存估算 (状态 / 历史 / 差异数据, 不含界面渲染)
 - Git 命令记录: `~/.config/jj-git/logs/` 每仓库一个文件, 含耗时; `sort -t$'\t' -k2 -n <file>` 找慢命令
@@ -35,13 +36,13 @@
 - Swift 6 + SwiftUI (必要处 AppKit), 仅 macOS 14+; 无第三方依赖
 - 主题: `Theme` (Dracula 色值) + `Typography` (字体缓存, 启动时配置); 每个 `NSHostingView` 根 (分栏 / 弹窗) 调 `.themed()`, 环境值不跨宿主
 - 原生 `jj-git.xcodeproj` + shared scheme `jj-git`; `xcodebuild` 编译 / 组装 `.app` / 签名 (默认 ad-hoc, 传 Team 用 Apple Development)
-- Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB
+- Git: 调用 Git CLI (`/opt/homebrew/bin/git` 优先), 每次独立进程, 不经 shell; 超时 / 取消终止进程; 输出上限 16 MiB; 自定义操作共用同一执行通道 (`ProcessCommand`)
 - 刷新: FSEvents 监听工作目录 + Git 目录 + 共享 Git 目录 (worktree), 合并 1 秒内事件; App 前台时兜底轮询 (默认 5 秒); 回到前台刷新
 - 标签释放: 未激活超过 `tabs.idleUnloadSeconds` (默认 180 秒, 1–86400) 释放 session, 保留标签位置; 未挂载标签为灰紫色, 点击重新加载; Git 操作完成后释放; 未提交的提交信息与视图状态随 session 清除; 配置修改后重启生效
 - 环境: 启动时读取登录 shell 的 PATH, 供 Git hooks 使用 node / bun 等工具
 - 按行暂存: 基于当前差异生成补丁 `git apply --cached`; 差异已变化则拒绝执行
 - 持久化: `~/.config/jj-git/` (Debug: `.app` 同级 `debug-config/`, 每份构建独立) 设置 JSONC / 状态 JSON; 启动时读取; 配置解析失败使用默认值并提示, 状态解析失败停写
-  - `config.jsonc`: 支持 `//` / `/* ... */` 注释 + 尾逗号, 逐键中文说明; 设置 (字体 / 差异行距 / 编辑器 / 文件管理器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔 / 命令记录); 缺失键取默认, 越界收敛
+  - `config.jsonc`: 支持 `//` / `/* ... */` 注释 + 尾逗号, 逐键中文说明; 设置 (字体 / 差异行距 / 编辑器 / 文件管理器 / 终端 / Git 路径·超时·输出上限 / Pull 方式 / 历史条数 / 差异上下文 / 轮询间隔 / 命令记录 / 自定义操作); 数组键 (`customActions`) 元素缺失键取默认; 缺失键取默认, 越界收敛
   - `state.json`: 仓库列表 (含使用热度 `usage` / `usedAt`) / 分组 / 自定义排序 (`sidebarOrderCustomized`, true 时按数组顺序显示) / 标签页 / 侧栏 / 窗口位置 (`window`) / 分栏尺寸 (`splits`) / 侧栏折叠分区 (`collapsedSections`); 外部修改需重启, 运行期间由 APP 写入
   - `config.default.jsonc`: 全部键默认值 + 中文说明 / 单位 / 范围, 启动时刷新, 仅供查阅
   - `logs/<目录名>-<路径哈希>.log`: 每仓库 (工作目录) 的 Git 命令记录, 一行一条: 开始时间 / 耗时 ms / 结果 / stdout 字节 / 命令 (URL 凭据脱敏) / 失败信息; 异步写入; 超 `commandLog.maxFileMiB` 轮转为 `.log.1`; 配置监听忽略 `logs/`

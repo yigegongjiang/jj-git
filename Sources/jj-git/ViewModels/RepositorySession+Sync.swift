@@ -48,4 +48,15 @@ extension RepositorySession {
             autoFetchRun = nil
         }
     }
+
+    /// 自定义操作：等待退出的占用操作状态栏（可取消、显示输出），否则启动即完成。
+    func run(_ action: CustomAction) {
+        let values = [
+            "REPO": location.root,
+            "BRANCH": status.detached ? "HEAD" : status.branch,
+            "SHA": status.unborn ? "" : status.head,
+            "REMOTE": defaultRemote
+        ]
+        perform(.custom(action, variables: values), title: action.waitForExit ? action.name : "启动「\(action.name)」")
+    }
 }

@@ -21,6 +21,8 @@ enum RepositoryAction: Sendable {
     case fetch(remote: String)
     case pull
     case push(remote: String, branch: String, lease: String?)
+    /// `variables`：`CustomAction.variables` 各名称的当前取值。
+    case custom(CustomAction, variables: [String: String])
 
     enum Transfer {
         case fetch, pull, push
@@ -61,6 +63,8 @@ actor RepositoryCommand {
             return try await editChanges(action)
         case let .commit(message, amend):
             return try await commitChanges(message: message, amend: amend)
+        case let .custom(action, variables):
+            return try await runCustom(action, variables: variables)
         default:
             return try await manage(action)
         }
@@ -297,5 +301,31 @@ actor RepositoryCommand {
         let output = try await GitProcess.run(at: query.location.root, arguments, input: input, timeout: timeout,
                                               progress: progress)
         return [output.text, output.error].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+}
+
+extension RepositoryCommand {
+    /// 自定义操作：不等待的只负责启动；等待的接受任意退出码，失败提示带上操作名与退出码。
+    private func runCustom(_ action: CustomAction, variables: [String: String]) async throws -> String {
+        let executable = try action.resolvedExecutable(searchPath: GitProcess.searchPath)
+        let arguments = action.expandedArguments(variables)
+        let command = ProcessCommand(
+            executable: executable, arguments: arguments, logged: [executable] + arguments,
+            environment: Dictionary(uniqueKeysWithValues: variables.map { ("JJ_GIT_" + $0.key, $0.value) }),
+            name: "「\(action.name)」", timeoutHint: "可调整 config.jsonc customActions 的 timeoutSeconds。",
+            limitHint: "请减少命令输出。"
+        )
+        guard action.waitForExit else {
+            try GitProcess.launch(command, at: query.location.root)
+            return ""
+        }
+        let output = try await GitProcess.execute(command, at: query.location.root, accepted: Set(0...255),
+                                                  timeout: TimeInterval(action.timeoutSeconds), progress: progress)
+        let text = [output.text, output.error].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }.joined(separator: "\n")
+        guard output.status == 0 else {
+            throw GitFailure(message: "「\(action.name)」退出码 \(output.status)" + (text.isEmpty ? "" : "\n" + text))
+        }
+        return text
     }
 }

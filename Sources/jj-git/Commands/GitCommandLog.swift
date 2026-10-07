@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-/// 每个仓库（工作目录）一份 Git 命令记录，供事后回溯与耗时排查。
+/// 每个仓库（工作目录）一份 Git 命令 / 自定义操作记录，供事后回溯与耗时排查。
 /// 每行 Tab 分隔：开始时间 / 耗时 ms / 结果 / stdout 字节 / 命令 / 失败信息；`sort -t$'\t' -k2 -n` 找慢命令。
 enum GitCommandLog {
     static let directory = ConfigStore.directory.appendingPathComponent("logs", isDirectory: true)
@@ -10,7 +10,8 @@ enum GitCommandLog {
     private static let argumentLimit = 2000
 
     /// 只排队写入，不阻塞 Git 调用；写入失败直接忽略。
-    static func record(at repository: String, arguments: [String], start: Date, milliseconds: Int,
+    /// `command` 首项为程序名（`git` / 自定义操作的可执行文件）。
+    static func record(at repository: String, command: [String], start: Date, milliseconds: Int,
                        result: Result<GitOutput, any Error>) {
         let config = AppConfig.current.commandLog
         guard config.enabled else { return }
@@ -37,7 +38,7 @@ enum GitCommandLog {
         let lines = note.split(whereSeparator: \.isNewline)
         let summary = (lines.first { $0.hasPrefix("fatal:") || $0.hasPrefix("error:") } ?? lines.first)
             .map { escape(redact(String($0.prefix(300)))) } ?? ""
-        let line = [start.formatted(timestamp), "\(milliseconds)", outcome, "\(bytes)", command(arguments), summary]
+        let line = [start.formatted(timestamp), "\(milliseconds)", outcome, "\(bytes)", describe(command), summary]
             .joined(separator: "\t") + "\n"
         let limit = config.maxFileMiB * 1024 * 1024
         queue.async { append(line, repository: repository, limit: limit) }
@@ -76,13 +77,13 @@ enum GitCommandLog {
         return directory.appendingPathComponent("\(String(name))-\(digest).log")
     }
 
-    private static func command(_ arguments: [String]) -> String {
-        var text = "git"
-        for (index, argument) in arguments.enumerated() {
+    private static func describe(_ command: [String]) -> String {
+        var text = ""
+        for (index, argument) in command.enumerated() {
             if text.count > argumentLimit {
-                return text + " …(+\(arguments.count - index) args)"
+                return text + " …(+\(command.count - index) args)"
             }
-            text += " " + quote(redact(argument))
+            text += (index == 0 ? "" : " ") + quote(redact(argument))
         }
         return text
     }

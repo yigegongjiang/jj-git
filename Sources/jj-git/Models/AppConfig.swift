@@ -101,6 +101,8 @@ struct AppConfig: Codable, Equatable, Sendable {
     var refresh = Refresh()
     var tabs = Tabs()
     var commandLog = CommandLog()
+    /// 工具栏「自定义操作」菜单项，按数组顺序显示。
+    var customActions: [CustomAction] = []
 
     func normalized() -> AppConfig {
         var value = self
@@ -130,6 +132,8 @@ struct AppConfig: Codable, Equatable, Sendable {
         value.tabs.idleUnloadSeconds = tabs.idleUnloadSeconds.clamped(1...86400)
         value.tabs.recentCount = tabs.recentCount.clamped(1...100)
         value.commandLog.maxFileMiB = commandLog.maxFileMiB.clamped(1...100)
+        // 归一化后 name 为空 = name 与 executable 均为空，没有可执行内容。
+        value.customActions = customActions.map { $0.normalized() }.filter { !$0.name.isEmpty }
         return value
     }
 

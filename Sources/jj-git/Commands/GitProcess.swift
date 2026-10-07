@@ -28,10 +28,30 @@ struct GitOutput: Sendable {
 /// 收到 stderr 最新一行（`--progress` 进度 / hooks 输出）；在后台队列调用。
 typealias GitProgressHandler = @Sendable (String) -> Void
 
+/// 一次子进程调用：Git 命令与自定义操作共用超时 / 取消 / 输出上限 / 命令记录。
+struct ProcessCommand: Sendable {
+    let executable: String
+    let arguments: [String]
+    /// 命令记录中的形式：Git 省略固定的前缀参数。
+    let logged: [String]
+    /// 叠加在默认环境之上。
+    var environment: [String: String] = [:]
+    /// 超时 / 输出超限提示中的操作名与建议。
+    var name = "Git 操作"
+    var timeoutHint = "请检查网络或 Git hooks。"
+    var limitHint = "请缩小所选文件或历史范围。"
+}
+
 /// 每次调用独立进程；不经过 shell，取消与超时会终止整个进程组。
 enum GitProcess {
     private static let detected = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
         .first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/git"
+    /// 登录 shell PATH 之后追加，保证 Homebrew / 系统工具可用。
+    static let fallbackPath = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+    static var searchPath: String {
+        (ShellEnvironment.path ?? ProcessInfo.processInfo.environment["PATH"] ?? "") + ":" + fallbackPath
+    }
 
     static func run(
         at directory: String, _ arguments: [String], input: Data? = nil,
@@ -42,8 +62,20 @@ enum GitProcess {
         guard FileManager.default.isExecutableFile(atPath: executable) else {
             throw GitFailure(message: "config.jsonc git.executable 不可执行：\(executable)")
         }
-        let timeout = timeout ?? TimeInterval(config.timeoutSeconds)
-        let execution = GitExecution(executable: executable, outputLimit: config.outputLimitMiB * 1024 * 1024,
+        let command = ProcessCommand(executable: executable,
+                                     arguments: ["--no-pager", "--literal-pathspecs", "-c", "color.ui=false",
+                                                 "-c", "core.quotepath=false"] + arguments,
+                                     logged: ["git"] + arguments)
+        return try await execute(command, at: directory, input: input, accepted: accepted,
+                                 timeout: timeout ?? TimeInterval(config.timeoutSeconds), progress: progress)
+    }
+
+    static func execute(
+        _ command: ProcessCommand, at directory: String, input: Data? = nil,
+        accepted: Set<Int32> = [0], timeout: TimeInterval, progress: GitProgressHandler? = nil
+    ) async throws -> GitOutput {
+        let execution = GitExecution(command: command,
+                                     outputLimit: AppConfig.current.git.outputLimitMiB * 1024 * 1024,
                                      progress: progress)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
@@ -52,16 +84,17 @@ enum GitProcess {
                     let start = Date()
                     let begin = DispatchTime.now().uptimeNanoseconds
                     let result = Result {
-                        try execution.run(at: directory, arguments: arguments, input: input, timeout: timeout)
+                        try execution.run(at: directory, input: input, timeout: timeout)
                     }
-                    GitCommandLog.record(at: directory, arguments: arguments, start: start,
+                    GitCommandLog.record(at: directory, command: command.logged, start: start,
                                          milliseconds: Int((DispatchTime.now().uptimeNanoseconds - begin) / 1_000_000),
                                          result: result)
                     do {
                         let output = try result.get()
                         guard accepted.contains(output.status) else {
-                            let detail = output.error.isEmpty ? output.text : output.error
-                            throw GitFailure(message: detail.trimmingCharacters(in: .whitespacesAndNewlines))
+                            let detail = (output.error.isEmpty ? output.text : output.error)
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                            throw GitFailure(message: detail.isEmpty ? "退出码 \(output.status)" : detail)
                         }
                         continuation.resume(returning: output)
                     } catch {
@@ -73,10 +106,45 @@ enum GitProcess {
             execution.cancel()
         }
     }
+
+    /// 启动后不等待：输入输出接空设备（无人读取的管道写满会阻塞子进程）；退出后由 Foundation 回收。
+    static func launch(_ command: ProcessCommand, at directory: String) throws {
+        let process = makeProcess(command, at: directory)
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        let start = Date()
+        let result = Result { try process.run() }
+        GitCommandLog.record(at: directory, command: command.logged, start: start, milliseconds: 0,
+                             result: result.map { GitOutput(data: Data(), error: "", status: 0) })
+        try result.get()
+    }
+
+    fileprivate static func makeProcess(_ command: ProcessCommand, at directory: String) -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: command.executable)
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+        process.arguments = command.arguments
+        var environment = ProcessInfo.processInfo.environment
+        for key in environment.keys where key.hasPrefix("GIT_") {
+            environment.removeValue(forKey: key)
+        }
+        environment["PATH"] = searchPath
+        environment["GIT_TERMINAL_PROMPT"] = "0"
+        environment["GIT_OPTIONAL_LOCKS"] = "0"
+        environment["GIT_EDITOR"] = "/usr/bin/true"
+        environment["GIT_MERGE_AUTOEDIT"] = "no"
+        environment["LC_ALL"] = "en_US.UTF-8"
+        environment["GIT_ASKPASS"] = "/usr/bin/false"
+        environment["SSH_ASKPASS"] = "/usr/bin/false"
+        environment.merge(command.environment) { $1 }
+        process.environment = environment
+        return process
+    }
 }
 
 private final class GitExecution: @unchecked Sendable {
-    private let executable: String
+    private let command: ProcessCommand
     private let outputLimit: Int
     private let progress: GitProgressHandler?
     private let lock = NSLock()
@@ -85,8 +153,8 @@ private final class GitExecution: @unchecked Sendable {
     private var failure: GitFailure?
     private var reported: String?
 
-    init(executable: String, outputLimit: Int, progress: GitProgressHandler?) {
-        self.executable = executable
+    init(command: ProcessCommand, outputLimit: Int, progress: GitProgressHandler?) {
+        self.command = command
         self.outputLimit = outputLimit
         self.progress = progress
     }
@@ -107,7 +175,7 @@ private final class GitExecution: @unchecked Sendable {
         lock.unlock()
     }
 
-    func run(at directory: String, arguments: [String], input: Data?, timeout: TimeInterval) throws -> GitOutput {
+    func run(at directory: String, input: Data?, timeout: TimeInterval) throws -> GitOutput {
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("jj-git-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o700])
@@ -127,17 +195,17 @@ private final class GitExecution: @unchecked Sendable {
             try? stdin.close()
         }
 
-        let command = makeCommand(at: directory, arguments: arguments)
-        command.standardOutput = stdout
-        command.standardError = stderr
-        command.standardInput = stdin
+        let child = GitProcess.makeProcess(command, at: directory)
+        child.standardOutput = stdout
+        child.standardError = stderr
+        child.standardInput = stdin
         // outputs[1] = stderr：进度与 hooks 输出所在。
-        try execute(command, timeout: timeout, outputs: [outputURL, errorURL])
+        try execute(child, timeout: timeout, outputs: [outputURL, errorURL])
         let errors = try readBounded(errorURL)
         return try GitOutput(data: readBounded(outputURL),
                              error: String(bytes: errors, encoding: .utf8).map(Self.collapse)
                                  ?? "Git error output is not UTF-8.",
-                             status: command.terminationStatus)
+                             status: child.terminationStatus)
     }
 
     /// `--progress` 用 `\r` 原地刷新同一行；每行只保留最终状态，供提示 / 错误 / 日志使用。
@@ -168,30 +236,6 @@ private final class GitExecution: @unchecked Sendable {
             .map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
     }
 
-    private func makeCommand(at directory: String, arguments: [String]) -> Process {
-        let command = Process()
-        command.executableURL = URL(fileURLWithPath: executable)
-        command.currentDirectoryURL = URL(fileURLWithPath: directory)
-        command.arguments = ["--no-pager", "--literal-pathspecs", "-c", "color.ui=false",
-                             "-c", "core.quotepath=false"] + arguments
-        var environment = ProcessInfo.processInfo.environment
-        for key in environment.keys where key.hasPrefix("GIT_") {
-            environment.removeValue(forKey: key)
-        }
-        let fallback = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-        environment["PATH"] = (ShellEnvironment.path ?? environment["PATH"] ?? "") + ":" + fallback
-        environment["GIT_TERMINAL_PROMPT"] = "0"
-        environment["GIT_OPTIONAL_LOCKS"] = "0"
-        environment["GIT_EDITOR"] = "/usr/bin/true"
-        environment["GIT_MERGE_AUTOEDIT"] = "no"
-        environment["LC_ALL"] = "en_US.UTF-8"
-        environment["GIT_ASKPASS"] = "/usr/bin/false"
-        environment["SSH_ASKPASS"] = "/usr/bin/false"
-        command.environment = environment
-
-        return command
-    }
-
     private func execute(_ command: Process, timeout: TimeInterval, outputs: [URL]) throws {
         lock.lock()
         if cancelled {
@@ -211,15 +255,15 @@ private final class GitExecution: @unchecked Sendable {
         timer.schedule(deadline: .now() + 0.25, repeating: 0.25)
         let limit = outputLimit
         timer.setEventHandler { [weak self] in
-            self?.reportProgress(outputs[1])
+            guard let self else { return }
+            reportProgress(outputs[1])
             if DispatchTime.now() >= deadline {
-                self?.cancel(failure: GitFailure(message: "Git 操作超时（\(Int(timeout)) 秒）。请检查网络或 Git hooks。",
-                                                 timedOut: true))
+                cancel(failure: timeoutFailure(timeout))
             } else if outputs.contains(where: { url in
                 let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize
                 return (size ?? 0) > limit
             }) {
-                self?.cancel(failure: GitFailure(message: "Git 输出超过 \(limit / 1024 / 1024) MiB，请缩小所选文件或历史范围。"))
+                cancel(failure: limitFailure())
             }
         }
         timer.resume()
@@ -238,12 +282,20 @@ private final class GitExecution: @unchecked Sendable {
         }
     }
 
+    private func timeoutFailure(_ timeout: TimeInterval) -> GitFailure {
+        GitFailure(message: "\(command.name)超时（\(Int(timeout)) 秒）。\(command.timeoutHint)", timedOut: true)
+    }
+
+    private func limitFailure() -> GitFailure {
+        GitFailure(message: "\(command.name)输出超过 \(outputLimit / 1024 / 1024) MiB，\(command.limitHint)")
+    }
+
     private func readBounded(_ url: URL) throws -> Data {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let data = try handle.read(upToCount: outputLimit + 1) ?? Data()
         guard data.count <= outputLimit else {
-            throw GitFailure(message: "Git 输出超过 \(outputLimit / 1024 / 1024) MiB，请缩小所选文件或历史范围。")
+            throw limitFailure()
         }
         return data
     }
