@@ -42,7 +42,7 @@ struct HistoryView: View {
                                 HStack(spacing: 6) {
                                     Text(file.status).font(.mono(-2))
                                         .foregroundStyle(.secondary)
-                                    Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
+                                    FilePathLabel(path: file.path)
                                     Spacer(minLength: 0)
                                     if session.selectedCommitFile == nil {
                                         RevealButton { session.revealCommitFile(file) }

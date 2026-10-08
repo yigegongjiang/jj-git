@@ -80,6 +80,7 @@ struct RepositoryQuery: Sendable {
         for index in stride(from: 0, to: max(0, fields.count - 1), by: 2) {
             changes.append(CommitFile(path: fields[index + 1], status: fields[index]))
         }
+        changes.sort { FilePath.precedes($0.path, $1.path) }
         return CommitDetail(message: values.0.text, files: changes)
     }
 

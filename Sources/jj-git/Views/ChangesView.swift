@@ -77,7 +77,7 @@ struct ChangeList: View {
                             Text(status)
                                 .font(.mono(-1, weight: .bold))
                                 .foregroundStyle(file.conflicted ? Theme.deleted : Color.secondary).frame(width: 14)
-                            Text(file.path).font(.ui()).lineLimit(1).truncationMode(.middle)
+                            FilePathLabel(path: file.path)
                             Spacer(minLength: 0)
                             if overviewActive {
                                 RevealButton { reveal(file) }
@@ -88,7 +88,7 @@ struct ChangeList: View {
                             (overviewActive ? [MenuAction(title: "在全部差异中定位") { reveal(file) }] : [])
                                 + fileActions([file]).flatMap(\.self)
                         )
-                        .tag(file.id).help(file.path)
+                        .tag(file.id).help(file.originalPath.map { "\($0) → \(file.path)" } ?? file.path)
                     }
                 }
                 .listStyle(.plain).scrollContentBackground(.hidden).scrollerGutter()
@@ -198,6 +198,22 @@ struct ChangeList: View {
         guard let last = files.lastIndex(where: { ids.contains($0.id) }) else { return nil }
         return files[(last + 1)...].first { !ids.contains($0.id) }
             ?? files[..<last].last { !ids.contains($0.id) }
+    }
+}
+
+/// 文件行路径：文件名在前，所在目录弱化在后；空间不足时先截断目录开头，保留最近的父目录。
+struct FilePathLabel: View {
+    let path: String
+
+    var body: some View {
+        let parts = FilePath.split(path)
+        HStack(spacing: 6) {
+            Text(parts.name).font(.ui()).lineLimit(1).truncationMode(.middle).layoutPriority(1)
+            if !parts.directory.isEmpty {
+                Text(parts.directory).font(.ui(-1)).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.head)
+            }
+        }
     }
 }
 

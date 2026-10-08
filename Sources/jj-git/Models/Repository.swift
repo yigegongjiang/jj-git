@@ -96,6 +96,7 @@ struct WorkingCopyStatus: Equatable, Sendable {
                 conflicted: kind == "u", submodule: fields[2].first == "S"
             ))
         }
+        status.changes.sort { FilePath.precedes($0.path, $1.path) }
         return status
     }
 
@@ -202,6 +203,28 @@ struct GitCommit: Identifiable, Hashable, Sendable {
 struct CommitDetail: Sendable {
     let message: String
     let files: [CommitFile]
+}
+
+/// 文件列表按目录归组：同目录文件相邻（目录内先文件、后子目录），数字按数值比较；
+/// 仅大小写不同时按字节比较，保证轮询间顺序稳定。
+enum FilePath {
+    static func split(_ path: String) -> (directory: String, name: String) {
+        // 未跟踪目录 / 子模块可能以 "/" 结尾，名称保留该后缀。
+        guard let slash = path.dropLast().lastIndex(of: "/") else { return ("", path) }
+        return (String(path[..<slash]), String(path[path.index(after: slash)...]))
+    }
+
+    static func precedes(_ lhs: String, _ rhs: String) -> Bool {
+        let left = split(lhs), right = split(rhs)
+        for (lhsPart, rhsPart) in [(left.directory, right.directory), (left.name, right.name)] {
+            switch lhsPart.localizedStandardCompare(rhsPart) {
+            case .orderedAscending: return true
+            case .orderedDescending: return false
+            case .orderedSame: continue
+            }
+        }
+        return lhs < rhs
+    }
 }
 
 struct CommitFile: Identifiable, Hashable, Sendable {
