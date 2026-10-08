@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.60] - 2026-10-08
+
+### Fixed
+
+- 含非 UTF-8 字节的文件（如 zsh 历史）差异不再报错：正常显示（非法字节显示为 �），行级暂存 / 丢弃禁用，按整个文件操作
+  - `GitOutput.diffText` 有损解码；`TextDiff.lossless` 为 false -> `partialRestriction`，`patch()` 拒绝生成补丁
+  - 原 `checkedText()` 抛错会让 `allDiffs` 整批失败（全部差异视图空白）；轮询复用同时比较 `lossless`
+
 ## [0.4.59] - 2026-10-07
 
 ### Added
