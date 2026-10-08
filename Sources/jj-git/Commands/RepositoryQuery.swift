@@ -88,7 +88,8 @@ struct RepositoryQuery: Sendable {
     ) async throws -> TextDiff {
         let arguments = ["show", "--format=", "--first-parent", "--root"] + Self.diffOptions + [commit.hash, "--", path]
         let output = try await run(arguments)
-        return try TextDiff(output.checkedText(), deadline: deadline)
+        let (text, lossless) = output.diffText
+        return try TextDiff(text, lossless: lossless, deadline: deadline)
     }
 
     /// 轮询刷新时内容通常未变：原文相同直接复用 previous，跳过大差异的重新解析。
@@ -104,11 +105,11 @@ struct RepositoryQuery: Sendable {
             arguments += ["--", file.path]
         }
         let output = try await GitProcess.run(at: location.root, arguments, accepted: file.untracked ? [0, 1] : [0])
-        let text = try output.checkedText()
-        if let previous, previous.raw.utf8.elementsEqual(text.utf8) {
+        let (text, lossless) = output.diffText
+        if let previous, previous.lossless == lossless, previous.raw.utf8.elementsEqual(text.utf8) {
             return previous
         }
-        return try TextDiff(text, deadline: deadline)
+        return try TextDiff(text, lossless: lossless, deadline: deadline)
     }
 
     /// 顺序读取限制进程数；统一预算包含读取、解析与宽度计算，取消会终止 Git。

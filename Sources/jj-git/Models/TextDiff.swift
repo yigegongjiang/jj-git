@@ -56,6 +56,8 @@ struct DiffHunk: Identifiable, Sendable {
 
 struct TextDiff: Sendable {
     let raw: String
+    /// raw 是否与 Git 输出逐字节一致；否则只能按整个文件操作。
+    let lossless: Bool
     var headers: [String] = []
     var hunks: [DiffHunk] = []
     var partialRestriction: String?
@@ -69,8 +71,9 @@ struct TextDiff: Sendable {
         Set(hunks.flatMap(\.lines).filter(\.changed).map(\.id))
     }
 
-    init(_ raw: String, deadline: ContinuousClock.Instant? = nil) throws {
+    init(_ raw: String, lossless: Bool, deadline: ContinuousClock.Instant? = nil) throws {
         self.raw = raw
+        self.lossless = lossless
         var oldLine = 0
         var newLine = 0
         var nextID = 0
@@ -100,19 +103,25 @@ struct TextDiff: Sendable {
                 partialRestriction = "文件类型发生变化，请按整个文件操作。"
             }
         }
+        partialRestriction = restriction(lossless: lossless) ?? partialRestriction
+        highlight(deadline: deadline)
+    }
+
+    /// 优先级从高到低；均不满足时保留解析中发现的类型变化。
+    private func restriction(lossless: Bool) -> String? {
+        if !lossless {
+            return "内容含非 UTF-8 字节，请按整个文件操作。"
+        }
+        if raw.hasPrefix("diff --cc ") || raw.hasPrefix("diff --combined ") {
+            return "请先在编辑器解决冲突，再暂存整个文件。"
+        }
         // 只检查头部与子模块的单块差异；对整个 raw 做子串搜索在大差异上耗时数百毫秒。
         let symlink = headers.contains {
             $0.contains("mode 120000") || $0.hasPrefix("index ") && $0.hasSuffix(" 120000")
         }
         let submodule = hunks.count == 1
             && hunks[0].lines.allSatisfy { $0.raw.dropFirst().hasPrefix("Subproject commit ") }
-        if symlink || submodule {
-            partialRestriction = "子模块与符号链接请按整个文件操作。"
-        }
-        if raw.hasPrefix("diff --cc ") || raw.hasPrefix("diff --combined ") {
-            partialRestriction = "请先在编辑器解决冲突，再暂存整个文件。"
-        }
-        highlight(deadline: deadline)
+        return symlink || submodule ? "子模块与符号链接请按整个文件操作。" : nil
     }
 
     private mutating func highlight(deadline: ContinuousClock.Instant?) {

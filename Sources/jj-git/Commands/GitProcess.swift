@@ -23,6 +23,15 @@ struct GitOutput: Sendable {
         }
         return value
     }
+
+    /// 差异仅用于显示：非法字节替换为 U+FFFD，lossless 为 false 时不得据此生成补丁。
+    var diffText: (text: String, lossless: Bool) {
+        if let value = String(bytes: data, encoding: .utf8) {
+            return (value, true)
+        }
+        // swiftlint:disable:next optional_data_string_conversion
+        return (String(decoding: data, as: UTF8.self), false)
+    }
 }
 
 /// 收到 stderr 最新一行（`--progress` 进度 / hooks 输出）；在后台队列调用。
