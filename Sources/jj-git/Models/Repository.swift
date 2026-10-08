@@ -35,6 +35,12 @@ struct FileChange: Identifiable, Hashable, Sendable {
     var paths: [String] {
         [path] + (originalPath.map { [$0] } ?? [])
     }
+
+    /// 暂存区里的 rename/copy 原路径已不在 index 与工作区，传给 git add 会使整批 pathspec 失败；
+    /// 仅工作区 rename（intent-to-add）需带原路径以暂存其删除。
+    var stagePaths: [String] {
+        index == "." ? paths : [path]
+    }
 }
 
 struct WorkingCopyStatus: Equatable, Sendable {

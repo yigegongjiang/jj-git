@@ -73,7 +73,7 @@ actor RepositoryCommand {
     private func editChanges(_ action: RepositoryAction) async throws -> String {
         switch action {
         case let .stage(files):
-            return try await run(["add", "--"] + paths(files))
+            return try await run(["add", "--"] + paths(files, \.stagePaths))
         case let .unstage(files):
             if try await query.status().unborn {
                 return try await run(["rm", "--cached", "-r", "-f", "--"] + paths(files))
@@ -238,9 +238,9 @@ actor RepositoryCommand {
         return try await run(arguments + ["--", remote, "HEAD:refs/heads/\(branch)"], timeout: Self.networkTimeout)
     }
 
-    private func paths(_ files: [FileChange]) throws -> [String] {
+    private func paths(_ files: [FileChange], _ list: (FileChange) -> [String] = \.paths) throws -> [String] {
         guard !files.isEmpty else { throw GitFailure(message: "请先选择文件。") }
-        return Array(Set(files.flatMap(\.paths))).sorted()
+        return Array(Set(files.flatMap(list))).sorted()
     }
 
     private func validateName(_ value: String) throws {
