@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.61] - 2026-10-08
+
+### Fixed
+
+- 点击差异行后文字不再跳变：保持代码字体与行内变化高亮
+  - 选中态由字段编辑器绘制，原先丢弃富文本属性并回退到控件 font（系统 13pt）；`DiffLineCell` / `DiffMessageCell` 开启 `allowsEditingTextAttributes`；`DiffLineCell` 另设 `font`（空行光标）
+
 ## [0.4.60] - 2026-10-08
 
 ### Fixed
