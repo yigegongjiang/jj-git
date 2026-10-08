@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.62] - 2026-10-08
+
+### Fixed
+
+- 已暂存的重命名文件再有改动时，暂存不再报 `pathspec did not match any files`，全部暂存也不再整批失败
+  - `FileChange.stagePaths`: `git add` 仅对工作区 rename（`.R`）带原路径；index rename/copy 只传新路径
+
 ## [0.4.61] - 2026-10-08
 
 ### Fixed

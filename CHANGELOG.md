@@ -9,6 +9,12 @@
 
 # Changelog
 
+## [0.4.62] - 2026-10-08
+
+### Fixed
+
+- 已暂存的重命名文件再有改动时，暂存不再报 `pathspec did not match any files`，全部暂存也不再整批失败
+
 ## [0.4.61] - 2026-10-08
 
 ### Fixed
