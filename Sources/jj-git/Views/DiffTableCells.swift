@@ -237,6 +237,7 @@ final class DiffMessageCell: NSView {
         super.init(frame: .zero)
         label.textColor = .secondaryLabelColor
         label.isSelectable = true
+        label.allowsEditingTextAttributes = true
         addSubview(label)
     }
 
@@ -289,8 +290,9 @@ final class DiffLineCell: NSView {
     init() {
         super.init(frame: .zero)
         field.isSelectable = true
+        // 点击后字段编辑器接管绘制：默认丢弃富文本属性、改用控件 font；保留属性 + font 同为代码字体，点击前后不跳变。
+        field.allowsEditingTextAttributes = true
         field.drawsBackground = false
-        field.cell?.wraps = true
         addSubview(field)
     }
 
@@ -331,6 +333,7 @@ final class DiffLineCell: NSView {
         field.cell?.wraps = wrap
         field.cell?.lineBreakMode = wrap ? .byWordWrapping : .byClipping
         field.usesSingleLineMode = !wrap
+        field.font = metrics.code
         field.attributedStringValue = content.text
         needsLayout = true
         needsDisplay = true
