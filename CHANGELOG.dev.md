@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.63] - 2026-10-08
+
+### Changed
+
+- 本地变更与提交详情的文件列表：文件名在前，所在目录以灰色小字跟在后面；同目录文件排在一起，数字按数值排序（file2 在 file10 之前）
+  - `FilePathLabel`（文件名 `.middle` + 目录 `.head` 截断）；`FilePath.precedes` 在 `WorkingCopyStatus.parse` / `detail` 排序，列表与全部差异同序；AX label / help 仍为完整路径
+
 ## [0.4.62] - 2026-10-08
 
 ### Fixed
