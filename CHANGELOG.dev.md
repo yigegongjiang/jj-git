@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.64] - 2026-10-09
+
+### Fixed
+
+- 刷新、Fetch 与差异读取恢复后，黄色错误提醒自动消失；失效仓库路径恢复后自动移除提醒
+  - `RepositorySession` 分离刷新 / Fetch / 读取错误；成功仅清除对应来源，Fetch 按远程归属；提交详情失败后随刷新重试，过期读取结果不回写
+  - `ContentView` 仅在存在失效路径时每 5 秒复查；手动关闭的重复刷新 / 自动 Fetch 错误保持关闭，恢复后新故障重新提示
+
 ## [0.4.63] - 2026-10-08
 
 ### Changed
