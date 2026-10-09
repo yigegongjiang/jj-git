@@ -29,6 +29,14 @@ struct ContentView: View {
         .task {
             openHandler.connect(workspace)
         }
+        .task {
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                if !workspace.missingRepositories.isEmpty {
+                    workspace.checkMissingRepositories()
+                }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             workspace.selected?.refresh()
             workspace.checkMissingRepositories()

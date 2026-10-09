@@ -26,13 +26,13 @@ struct RepositoryView: View {
         VStack(spacing: 0) {
             toolbar
             ThemedDivider()
-            if let error = session.error {
+            if let error = session.displayedError {
                 WarningBanner {
                     ScrollView {
                         Text(error).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }.scrollerGutter().frame(maxHeight: 80)
                 } actions: {
-                    Button { session.error = nil } label: { Image(systemName: "xmark") }
+                    Button { session.dismissErrors() } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("关闭错误提示").help("关闭错误提示")
                 }
             }

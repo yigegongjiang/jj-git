@@ -15,6 +15,7 @@ extension RepositorySession {
         selectedFile = file
         selectedStaged = staged
         diff = cached
+        readError = nil
         reloadSelectedDiff()
     }
 
@@ -28,6 +29,7 @@ extension RepositorySession {
         fileDiffs = []
         diff = nil
         diffFallback = false
+        readError = nil
         loadDiffOverview(DiffTarget.changes(status, staged: staged))
     }
 
@@ -99,6 +101,7 @@ extension RepositorySession {
         diffReveal = nil
         selectedCommitFile = file
         diff = cached
+        readError = nil
         guard let file, let selectedCommit, cached == nil else { loadingDiff = false; return }
         loadingDiff = true
         diffTask = Task { [weak self] in
@@ -108,7 +111,11 @@ extension RepositorySession {
                 try Task.checkCancellation()
                 guard generation == diffGeneration else { return }
                 diff = result
-            } catch is CancellationError { return } catch { self.error = error.localizedDescription }
+                readError = nil
+            } catch is CancellationError { return } catch {
+                guard !Task.isCancelled, generation == diffGeneration else { return }
+                readError = error.localizedDescription
+            }
             if generation == diffGeneration {
                 loadingDiff = false
             }
@@ -122,6 +129,7 @@ extension RepositorySession {
         let previous = fileDiffs
         guard !targets.isEmpty else {
             fileDiffs = []; diff = nil; selectedFile = nil; loadingDiff = false; diffFallback = false
+            readError = nil
             return
         }
         loadingDiff = diff == nil && fileDiffs.isEmpty
@@ -135,6 +143,7 @@ extension RepositorySession {
             }
             guard !Task.isCancelled, generation == diffGeneration else { return }
             if let prepared, !prepared.isEmpty {
+                readError = nil
                 fileDiffs = prepared
                 diffFallback = false
                 if commit == nil {

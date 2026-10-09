@@ -1,6 +1,61 @@
 import Foundation
 
 extension RepositorySession {
+    /// 远端分支对应的本地分支：优先跟踪它的分支，其次同名分支。
+    func localBranch(for remoteBranch: GitReference) -> GitReference? {
+        let locals = references.filter { !$0.remote && !$0.tag }
+        if let tracking = locals.first(where: { $0.upstream == remoteBranch.name }) {
+            return tracking
+        }
+        guard let remote = remotes.filter({ remoteBranch.name.hasPrefix($0.name + "/") })
+            .max(by: { $0.name.count < $1.name.count }) else { return nil }
+        let name = String(remoteBranch.name.dropFirst(remote.name.count + 1))
+        return locals.first { $0.name == name }
+    }
+
+    func checkout(_ branch: GitReference) {
+        let target = branch.remote ? localBranch(for: branch) ?? branch : branch
+        guard !target.current else { return }
+        guard target.checkedOutPath.isEmpty else {
+            error = "\(target.name) 已在其他工作树检出：\(target.checkedOutPath)"
+            return
+        }
+        perform(.checkout(target), title: "检出 \(target.name)")
+    }
+
+    /// 0.4s / 12s / 2m05s
+    nonisolated static func duration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        return seconds < 10 ? String(format: "%.1fs", seconds)
+            : total < 60 ? "\(total)s" : String(format: "%dm%02ds", total / 60, total % 60)
+    }
+
+    var displayedError: String? {
+        error ?? refreshError ?? readError ?? fetchError
+    }
+
+    func dismissErrors() {
+        error = nil
+        refreshError = nil
+        readError = nil
+        fetchError = nil
+    }
+
+    func clearFetchError(remote: String) {
+        guard fetchFailureRemote == remote else { return }
+        fetchFailure = nil
+        fetchFailureRemote = nil
+        fetchError = nil
+    }
+
+    func reportFetchFailure(remote: String, failure: Error, automatic: Bool) {
+        let message = failure.localizedDescription
+        guard !automatic || message != fetchFailure || fetchFailureRemote != remote else { return }
+        fetchFailure = message
+        fetchFailureRemote = remote
+        fetchError = (automatic ? "自动 " : "") + "Fetch \(remote) 失败：\(message)"
+    }
+
     /// 上游所在远程，其次 origin，最后第一个远程。
     var defaultRemote: String {
         remotes.first { status.upstream.hasPrefix($0.name + "/") }?.name
@@ -29,17 +84,14 @@ extension RepositorySession {
             do {
                 _ = try await command.perform(.fetch(remote: remote))
                 guard let self else { return }
-                autoFetchFailure = nil
+                clearFetchError(remote: remote)
                 if active {
                     refresh()
                 }
             } catch is CancellationError {
                 return
             } catch {
-                let message = error.localizedDescription
-                guard let self, message != autoFetchFailure else { return }
-                autoFetchFailure = message
-                self.error = "自动 Fetch \(remote) 失败：\(message)"
+                self?.reportFetchFailure(remote: remote, failure: error, automatic: true)
             }
         }
         autoFetchRun = run

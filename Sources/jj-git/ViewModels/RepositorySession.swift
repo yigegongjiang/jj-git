@@ -36,6 +36,9 @@ final class RepositorySession: Identifiable {
     var amend = false
     var section = RepositorySection.changes
     var error: String?
+    var refreshError: String?
+    var fetchError: String?
+    var readError: String?
     var notice = ""
     /// 最近一次操作的完整输出，点击状态栏提示查看。
     var operationOutput = ""
@@ -56,9 +59,11 @@ final class RepositorySession: Identifiable {
     @ObservationIgnored private var autoFetching: Task<Void, Never>?
     /// 进行中的单次自动 Fetch；手动操作开始前等待它结束。
     @ObservationIgnored var autoFetchRun: Task<Void, Never>?
-    @ObservationIgnored var autoFetchFailure: String?
+    @ObservationIgnored var fetchFailure: String?
+    @ObservationIgnored var fetchFailureRemote: String?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var detailTask: Task<Void, Never>?
+    @ObservationIgnored private var detailFailed = false
     @ObservationIgnored var diffTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var referenceKey = ""
@@ -165,15 +170,17 @@ final class RepositorySession: Identifiable {
             }
             do {
                 try await refreshSnapshot()
+                refreshError = nil
                 refreshFailure = nil
             } catch is CancellationError {
                 return
             } catch {
+                guard !Task.isCancelled, generation == refreshGeneration else { return }
                 // 同一错误只提示一次，避免每次轮询重新弹出已关闭的提示。
                 let message = error.localizedDescription
                 if message != refreshFailure {
                     refreshFailure = message
-                    self.error = message
+                    refreshError = message
                 }
             }
         }
@@ -192,6 +199,11 @@ final class RepositorySession: Identifiable {
         status = values.0
         references = values.1
         remotes = values.2
+        if let remote = fetchFailureRemote, !remotes.contains(where: { $0.name == remote }) {
+            fetchFailure = nil
+            fetchFailureRemote = nil
+            fetchError = nil
+        }
         worktrees = values.3
         interruptedOperation = query.operationInProgress()
         if key != referenceKey {
@@ -206,6 +218,9 @@ final class RepositorySession: Identifiable {
             }
         }
         lastRefreshed = Date()
+        if let selectedCommit, detailFailed, section == .history {
+            selectCommit(selectedCommit)
+        }
         if sectionAutoPending {
             sectionAutoPending = false
             if section == .changes, status.changes.isEmpty, !graph.isEmpty {
@@ -259,10 +274,12 @@ extension RepositorySession {
                 if diff?.raw != result.raw {
                     selectedLines = []; diff = result
                 }
+                readError = nil
             } catch is CancellationError {
                 return
             } catch {
-                self.error = error.localizedDescription
+                guard !Task.isCancelled, generation == diffGeneration else { return }
+                readError = error.localizedDescription
             }
             if generation == diffGeneration {
                 loadingDiff = false
@@ -271,6 +288,10 @@ extension RepositorySession {
     }
 
     func selectCommit(_ commit: GitCommit?) {
+        if selectedCommit?.id != commit?.id {
+            readError = nil
+        }
+        detailFailed = false
         detailTask?.cancel()
         diffTask?.cancel()
         diffGeneration += 1
@@ -290,8 +311,13 @@ extension RepositorySession {
                 try Task.checkCancellation()
                 guard selectedCommit?.id == commit.id else { return }
                 commitDetail = detail
+                readError = nil
                 showCommitOverview()
-            } catch is CancellationError { return } catch { self.error = error.localizedDescription }
+            } catch is CancellationError { return } catch {
+                guard !Task.isCancelled, selectedCommit?.id == commit.id else { return }
+                detailFailed = true
+                readError = error.localizedDescription
+            }
         }
     }
 
@@ -317,58 +343,37 @@ extension RepositorySession {
         }
         operationTask = Task { [weak self] in
             guard let self else { return }
+            var succeeded = false
             // 等待进行中的自动 Fetch 结束（通常 < 1s）；用户取消操作时才终止它。
             if let autoFetch {
                 await withTaskCancellationHandler { await autoFetch.value } onCancel: { autoFetch.cancel() }
             }
             do {
                 let output = try await command.perform(action, progress: progress)
+                succeeded = true
                 notice = "\(title)完成 · " + Self.duration(Date().timeIntervalSince(started))
                 operationOutput = String(output.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4000))
+                if case let .fetch(remote) = action {
+                    clearFetchError(remote: remote)
+                }
             } catch is CancellationError {
                 notice = "操作已取消；正在重新读取仓库状态。"
             } catch {
-                self.error = error.localizedDescription
+                if case let .fetch(remote) = action {
+                    reportFetchFailure(remote: remote, failure: error, automatic: false)
+                } else {
+                    self.error = error.localizedDescription
+                }
             }
             operation = nil
             operationAction = nil
             operationProgress = nil
             operationStarted = nil
-            refreshing = false
             refresh(forceHistory: true)
-            if error == nil, !Task.isCancelled {
+            if succeeded, !Task.isCancelled {
                 completion?()
             }
         }
-    }
-
-    /// 0.4s / 12s / 2m05s
-    nonisolated static func duration(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds)
-        return seconds < 10 ? String(format: "%.1fs", seconds)
-            : total < 60 ? "\(total)s" : String(format: "%dm%02ds", total / 60, total % 60)
-    }
-
-    /// 远端分支对应的本地分支：优先跟踪它的分支，其次同名分支。
-    func localBranch(for remoteBranch: GitReference) -> GitReference? {
-        let locals = references.filter { !$0.remote && !$0.tag }
-        if let tracking = locals.first(where: { $0.upstream == remoteBranch.name }) {
-            return tracking
-        }
-        guard let remote = remotes.filter({ remoteBranch.name.hasPrefix($0.name + "/") })
-            .max(by: { $0.name.count < $1.name.count }) else { return nil }
-        let name = String(remoteBranch.name.dropFirst(remote.name.count + 1))
-        return locals.first { $0.name == name }
-    }
-
-    func checkout(_ branch: GitReference) {
-        let target = branch.remote ? localBranch(for: branch) ?? branch : branch
-        guard !target.current else { return }
-        guard target.checkedOutPath.isEmpty else {
-            error = "\(target.name) 已在其他工作树检出：\(target.checkedOutPath)"
-            return
-        }
-        perform(.checkout(target), title: "检出 \(target.name)")
     }
 
     func cancelOperation() {
