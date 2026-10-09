@@ -103,6 +103,15 @@ final class Workspace {
         save()
     }
 
+    /// Reorder only the tab array; selected session and idle unloads retain their identity.
+    func moveTab(_ path: String, to destination: Int) {
+        guard let source = library.tabs.firstIndex(of: path),
+              library.tabs.indices.contains(destination), source != destination else { return }
+        library.tabs.remove(at: source)
+        library.tabs.insert(path, at: destination)
+        save()
+    }
+
     func close(_ path: String) {
         guard sessions[path]?.operation == nil else { return }
         idleUnloads.removeValue(forKey: path)?.cancel()
