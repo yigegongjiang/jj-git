@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.65] - 2026-10-09
+
+### Added
+
+- 仓库标签支持长按后左右拖动排序，自动保存顺序；标签过多时拖到边缘自动滚动
+  - `RepositoryTabs` 组合 LongPressGesture + DragGesture、插入标记 / ScrollViewReader；`Workspace.moveTab` 只改 tabs + save，保留 selectedPath / session；右键菜单与 AX 提供左移 / 右移
+
 ## [0.4.64] - 2026-10-09
 
 ### Fixed
