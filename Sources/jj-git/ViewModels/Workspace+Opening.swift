@@ -24,13 +24,13 @@ extension Workspace {
     }
 
     /// ⌘P 列表：按衰减后的使用热度排序，未使用过的按标签 / 仓库列表顺序补足；排除当前与失效仓库。
-    /// `query` 非空时按仓库名（忽略大小写）筛选。
+    /// `query` 非空时按仓库名筛选（规则见 `String.searchMatches`）。
     func recentRepositories(matching query: String = "") -> [SavedRepository] {
         let now = Date().timeIntervalSince1970
         let tabs = Dictionary(library.tabs.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         let candidates = library.repositories.enumerated().filter {
             $0.element.path != library.selectedPath && !missingRepositories.contains($0.element.path) &&
-                (query.isEmpty || $0.element.name.localizedCaseInsensitiveContains(query))
+                $0.element.name.searchMatches(query)
         }
         let ranked = candidates.map { (offset: $0.offset, repository: $0.element, usage: $0.element.usage(at: now)) }
             .sorted { lhs, rhs in
@@ -45,10 +45,7 @@ extension Workspace {
 
     /// 全部侧栏仓库：按名称排序，包含当前仓库，不限制数量；按名称 / 路径筛选。
     func sidebarRepositories(matching query: String = "") -> [SavedRepository] {
-        library.repositories.filter {
-            query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) ||
-                $0.path.localizedCaseInsensitiveContains(query)
-        }.sorted {
+        library.repositories.filter { $0.name.searchMatches(query) || $0.path.searchMatches(query) }.sorted {
             let order = $0.name.localizedStandardCompare($1.name)
             return order == .orderedSame ? $0.path < $1.path : order == .orderedAscending
         }
@@ -97,5 +94,20 @@ extension Workspace {
             remove(path)
         }
         checkMissingRepositories()
+    }
+}
+
+extension String {
+    /// 检索匹配：忽略大小写 / 变音符 / 全半角，且忽略非字母数字字符（`jjgit`、`jj git` 均匹配 `jj-git`）；
+    /// 查询只含分隔符时退回原文包含匹配。
+    func searchMatches(_ query: String) -> Bool {
+        guard !query.isEmpty else { return true }
+        let term = query.searchKey
+        return term.isEmpty ? localizedCaseInsensitiveContains(query) : searchKey.contains(term)
+    }
+
+    private var searchKey: String {
+        let folded = folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+        return String(String.UnicodeScalarView(folded.unicodeScalars.filter(CharacterSet.alphanumerics.contains)))
     }
 }
