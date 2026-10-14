@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.5.2] - 2026-10-14
+
+### Changed
+
+- 跟随版本同步发布
+  - `RepositorySession.pollScope`：轮询范围改为每次读取监听可靠性，供验收直接断言
+  - 验收：`jj-git-test-project/NetworkVolumeAcceptance.swift` 在 WebDAV 挂载上通过（监听判为不可靠 -> 轮询全量重读）；`Acceptance.swift` 按现有接口修正，59 项通过
+
 ## [0.5.1] - 2026-10-14
 
 ### Fixed
