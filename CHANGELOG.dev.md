@@ -7,6 +7,15 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.5.1] - 2026-10-14
+
+### Fixed
+
+- 仓库位于网络卷或文件变化通知丢失时，自动全量核对差异，不再显示过期内容
+  - `RepositoryMonitor`：事件带 MustScanSubDirs / UserDropped / KernelDropped / RootChanged 时回调 `rescan` -> `FileSystemChange` 全部重读
+  - `RepositoryMonitor.reliable`（监听已启动 + `statfs` MNT_LOCAL）为 false 时，前台轮询附带 `.contents`
+  - 验收：`jj-git-test-project/LatencyAcceptance.swift`（31 项：通道并行 / Fetch 合并 / 刷新范围 / 差异沿用 / 部分暂存 / 提交缓存 / 渐进显示）
+
 ## [0.5.0] - 2026-10-14
 
 ### Changed
