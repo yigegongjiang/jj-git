@@ -103,20 +103,22 @@ final class RepositorySession: Identifiable {
         active = true
         sectionAutoPending = true
         let location = location
-        monitor = RepositoryMonitor(location: location) { [weak self] paths in
-            let change = FileSystemChange(paths, in: location)
+        monitor = RepositoryMonitor(location: location) { [weak self] paths, rescan in
+            let change = FileSystemChange(paths, rescan: rescan, in: location)
             guard let scope = change.scope else { return }
             let changed = change.paths
             Task { @MainActor [weak self] in self?.filesystemChanged(scope, paths: changed) }
         }
         // FSEvents 负责实时刷新；轮询只兜底漏报，且仅在 App 位于前台、一个间隔内没有刷新过时执行。
+        // 事件不可靠（网络卷 / 监听未启动）时轮询同时全量重读差异。
+        let pollScope: RefreshScope = monitor?.reliable == true ? .references : [.references, .contents]
         polling = Task { [weak self] in
             while !Task.isCancelled {
                 let interval = Duration.seconds(AppConfig.current.refresh.pollSeconds)
                 do { try await Task.sleep(for: interval) } catch { return }
                 guard let self else { return }
                 if NSApplication.shared.isActive, lastRefreshed.map({ $0.duration(to: .now) >= interval }) ?? true {
-                    refresh()
+                    refresh(pollScope)
                 }
             }
         }

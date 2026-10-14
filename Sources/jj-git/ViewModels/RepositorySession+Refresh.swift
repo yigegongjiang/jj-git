@@ -151,7 +151,7 @@ struct RefreshScope: OptionSet, Sendable {
     static let everything: Self = [.references, .history, .contents]
 }
 
-/// 一批 FSEvents 的归类：工作区文件只影响状态与这些文件的差异；index 只需重读状态（暂存区 / HEAD 内容变化
+/// 一批 FSEvents 的归类（事件丢失 / 合并需重扫时全部重读）：工作区文件只影响状态与这些文件的差异；index 只需重读状态（暂存区 / HEAD 内容变化
 /// 体现在 `FileChange.objects`）；其他 Git 元数据（HEAD / ref / 配置 / 工作树）另读 ref。对象与 reflog 随 ref /
 /// index 一起变化、FETCH_HEAD 不参与显示，单独出现时忽略。根目录本身变化（移动 / 需重扫）全部重读。
 struct FileSystemChange: Sendable {
@@ -160,7 +160,12 @@ struct FileSystemChange: Sendable {
     /// `.worktree` 对应的路径（相对仓库根）。
     let paths: [String]
 
-    init(_ events: [String], in location: RepositoryLocation) {
+    init(_ events: [String], rescan: Bool = false, in location: RepositoryLocation) {
+        guard !rescan else {
+            scope = [.references, .contents]
+            paths = []
+            return
+        }
         var scope: RefreshScope?
         var paths: [String] = []
         for path in events.map({ $0.hasSuffix("/") ? String($0.dropLast()) : $0 }) {
