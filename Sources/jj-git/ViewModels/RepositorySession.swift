@@ -49,30 +49,40 @@ final class RepositorySession: Identifiable {
     var operationStarted: Date?
     var refreshing = false
     var loadingDiff = false
-    var lastRefreshed: Date?
     var interruptedOperation: String?
 
     @ObservationIgnored private(set) var active = false
-    @ObservationIgnored private var refreshPending = false
+    @ObservationIgnored var lastRefreshed: ContinuousClock.Instant?
+    /// 进行中 / 排队中的刷新范围；操作期间的请求合并为一次，操作结束后与操作自身的刷新一起执行。
+    @ObservationIgnored var refreshingScope: RefreshScope = []
+    @ObservationIgnored var pendingRefresh: RefreshScope?
+    /// 最近一次操作的阶段计时，随其后的刷新完成写入命令记录。
+    @ObservationIgnored var operationTrace: OperationTrace?
     @ObservationIgnored private var monitor: RepositoryMonitor?
     @ObservationIgnored private var polling: Task<Void, Never>?
     @ObservationIgnored private var autoFetching: Task<Void, Never>?
-    /// 进行中的单次自动 Fetch；手动操作开始前等待它结束。
-    @ObservationIgnored var autoFetchRun: Task<Void, Never>?
+    /// 进行中的单次自动 Fetch；与之冲突的手动操作等待它结束，同一远程的手动 Fetch 直接沿用其结果。
+    @ObservationIgnored var autoFetchRun: AutoFetchRun?
     @ObservationIgnored var fetchFailure: String?
     @ObservationIgnored var fetchFailureRemote: String?
-    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var detailTask: Task<Void, Never>?
-    @ObservationIgnored private var detailFailed = false
+    @ObservationIgnored var detailFailed = false
     @ObservationIgnored var diffTask: Task<Void, Never>?
+    @ObservationIgnored var commitCache = CommitDiffCache()
+    @ObservationIgnored var overviewTrace: OperationTrace?
+    /// 自上次完整读取全部差异以来变化的工作区路径 → 事件序号；`diffsInvalidated` 为全部失效时的序号。
+    @ObservationIgnored var changedPaths: [String: Int] = [:]
+    @ObservationIgnored var diffsInvalidated: Int? = 0
+    @ObservationIgnored var changeSequence = 0
     @ObservationIgnored private var operationTask: Task<Void, Never>?
-    @ObservationIgnored private var referenceKey = ""
+    @ObservationIgnored var referenceKey = ""
     @ObservationIgnored var diffGeneration = 0
     @ObservationIgnored var revealCount = 0
-    @ObservationIgnored private var refreshGeneration = 0
-    @ObservationIgnored private var refreshFailure: String?
+    @ObservationIgnored var refreshGeneration = 0
+    @ObservationIgnored var refreshFailure: String?
     /// 打开 / 切换到仓库后首次刷新：无本地变更则显示提交历史；手动切换分区即取消。
-    @ObservationIgnored private var sectionAutoPending = false
+    @ObservationIgnored var sectionAutoPending = false
 
     init(location: RepositoryLocation) {
         self.location = location
@@ -92,15 +102,21 @@ final class RepositorySession: Identifiable {
         guard !active else { return }
         active = true
         sectionAutoPending = true
-        monitor = RepositoryMonitor(location: location) { [weak self] in
-            Task { @MainActor [weak self] in self?.filesystemChanged() }
+        let location = location
+        monitor = RepositoryMonitor(location: location) { [weak self] paths in
+            let change = FileSystemChange(paths, in: location)
+            guard let scope = change.scope else { return }
+            let changed = change.paths
+            Task { @MainActor [weak self] in self?.filesystemChanged(scope, paths: changed) }
         }
-        // FSEvents 负责实时刷新；轮询只兜底漏报，且仅在 App 位于前台时执行。
+        // FSEvents 负责实时刷新；轮询只兜底漏报，且仅在 App 位于前台、一个间隔内没有刷新过时执行。
         polling = Task { [weak self] in
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(AppConfig.current.refresh.pollSeconds)) } catch { return }
-                if NSApplication.shared.isActive {
-                    self?.refresh()
+                let interval = Duration.seconds(AppConfig.current.refresh.pollSeconds)
+                do { try await Task.sleep(for: interval) } catch { return }
+                guard let self else { return }
+                if NSApplication.shared.isActive, lastRefreshed.map({ $0.duration(to: .now) >= interval }) ?? true {
+                    refresh()
                 }
             }
         }
@@ -114,13 +130,13 @@ final class RepositorySession: Identifiable {
                 }
             }
         }
-        refresh()
+        refresh([.references, .contents])
     }
 
-    private func filesystemChanged() {
-        if active {
-            refresh()
-        }
+    private func filesystemChanged(_ scope: RefreshScope, paths: [String]) {
+        guard active else { return }
+        markChanged(paths)
+        refresh(scope)
     }
 
     func deactivate() {
@@ -130,10 +146,7 @@ final class RepositorySession: Identifiable {
         polling = nil
         autoFetching?.cancel()
         autoFetching = nil
-        refreshTask?.cancel()
-        refreshTask = nil
-        refreshGeneration += 1
-        refreshing = false
+        cancelRefresh()
     }
 
     func waitForOperation() async {
@@ -147,92 +160,7 @@ final class RepositorySession: Identifiable {
         detailTask = nil
         diffTask?.cancel()
         diffTask = nil
-    }
-
-    func refresh(forceHistory: Bool = false) {
-        if forceHistory {
-            referenceKey = ""
-        }
-        guard operation == nil, !refreshing else { refreshPending = true; return }
-        refreshing = true
-        refreshGeneration += 1
-        let generation = refreshGeneration
-        refreshTask = Task { [weak self] in
-            guard let self else { return }
-            defer {
-                if generation == refreshGeneration {
-                    refreshing = false
-                    if refreshPending, active {
-                        refreshPending = false
-                        refresh()
-                    }
-                }
-            }
-            do {
-                try await refreshSnapshot()
-                refreshError = nil
-                refreshFailure = nil
-            } catch is CancellationError {
-                return
-            } catch {
-                guard !Task.isCancelled, generation == refreshGeneration else { return }
-                // 同一错误只提示一次，避免每次轮询重新弹出已关闭的提示。
-                let message = error.localizedDescription
-                if message != refreshFailure {
-                    refreshFailure = message
-                    refreshError = message
-                }
-            }
-        }
-    }
-
-    private func refreshSnapshot() async throws {
-        let query = command.query
-        async let newStatus = query.status()
-        async let newRefs = query.references()
-        async let newRemotes = query.remotes()
-        async let newTrees = query.worktrees()
-        let values = try await (newStatus, newRefs, newRemotes, newTrees)
-        try Task.checkCancellation()
-        let key = values.0.head + values.1.map { $0.fullName + $0.target }.joined()
-        let changed = status != values.0
-        status = values.0
-        references = values.1
-        remotes = values.2
-        if let remote = fetchFailureRemote, !remotes.contains(where: { $0.name == remote }) {
-            fetchFailure = nil
-            fetchFailureRemote = nil
-            fetchError = nil
-        }
-        worktrees = values.3
-        interruptedOperation = query.operationInProgress()
-        if key != referenceKey {
-            let commits = try await query.commits(limit: historyLimit, includeHead: !values.0.unborn)
-            try Task.checkCancellation()
-            graph = CommitGraphRow.build(commits, head: values.0.head)
-            graphLanes = min(graph.map(\.width).max() ?? 1, 8)
-            hasMoreHistory = commits.count == historyLimit
-            referenceKey = key
-            if let selectedCommit, !commits.contains(where: { $0.id == selectedCommit.id }) {
-                selectCommit(nil)
-            }
-        }
-        lastRefreshed = Date()
-        if let selectedCommit, detailFailed, section == .history {
-            selectCommit(selectedCommit)
-        }
-        if sectionAutoPending {
-            sectionAutoPending = false
-            if section == .changes, status.changes.isEmpty, !graph.isEmpty {
-                changeSection(.history)
-            }
-        }
-        if section == .changes {
-            if changed {
-                selectedLines = []
-            }
-            refreshChangesDiff()
-        }
+        commitCache = CommitDiffCache()
     }
 }
 
@@ -304,6 +232,11 @@ extension RepositorySession {
         selectedCommitFile = nil
         diff = nil
         guard let commit else { return }
+        if let cached = commitCache.entry(for: commit) {
+            commitDetail = cached.detail
+            readError = nil
+            return showCommitOverview()
+        }
         detailTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -323,6 +256,7 @@ extension RepositorySession {
 
     func perform(_ action: RepositoryAction, title: String, completion: (@MainActor () -> Void)? = nil) {
         guard operation == nil else { return }
+        let clicked = ContinuousClock.now
         operation = title
         operationAction = action
         let started = Date()
@@ -330,10 +264,7 @@ extension RepositorySession {
         error = nil
         notice = ""
         operationOutput = ""
-        refreshTask?.cancel()
-        refreshGeneration += 1
-        refreshing = false
-        let autoFetch = autoFetchRun
+        cancelRefresh()
         // 计时器回调可能晚于操作结束到达；开始时间即本次操作的标识。
         let progress: GitProgressHandler = { [weak self] line in
             Task { @MainActor [weak self] in
@@ -344,12 +275,10 @@ extension RepositorySession {
         operationTask = Task { [weak self] in
             guard let self else { return }
             var succeeded = false
-            // 等待进行中的自动 Fetch 结束（通常 < 1s）；用户取消操作时才终止它。
-            if let autoFetch {
-                await withTaskCancellationHandler { await autoFetch.value } onCancel: { autoFetch.cancel() }
-            }
+            var trace = OperationTrace(name: title, start: clicked)
             do {
-                let output = try await command.perform(action, progress: progress)
+                let output = try await execute(action, progress: progress, trace: &trace)
+                trace.mark("git")
                 succeeded = true
                 notice = "\(title)完成 · " + Self.duration(Date().timeIntervalSince(started))
                 operationOutput = String(output.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4000))
@@ -359,6 +288,7 @@ extension RepositorySession {
             } catch is CancellationError {
                 notice = "操作已取消；正在重新读取仓库状态。"
             } catch {
+                trace.mark("git")
                 if case let .fetch(remote) = action {
                     reportFetchFailure(remote: remote, failure: error, automatic: false)
                 } else {
@@ -369,11 +299,41 @@ extension RepositorySession {
             operationAction = nil
             operationProgress = nil
             operationStarted = nil
-            refresh(forceHistory: true)
+            operationTrace = trace
+            markChanged(action.writtenPaths)
+            refresh(action.refreshScope)
             if succeeded, !Task.isCancelled {
                 completion?()
             }
         }
+    }
+
+    /// 自动 Fetch 进行中时：同一远程的 Fetch 直接沿用其结果；与 Fetch 冲突的操作等待它结束（通常 < 3s）；
+    /// 本地操作立即执行。用户取消等待时才终止自动 Fetch（终止可能残留 ref `.lock`）。
+    private func execute(_ action: RepositoryAction, progress: @escaping GitProgressHandler,
+                         trace: inout OperationTrace) async throws -> String {
+        if let fetch = autoFetchRun {
+            let joins = if case let .fetch(remote) = action {
+                remote == fetch.remote
+            } else {
+                false
+            }
+            if joins || !action.lane.runs(alongside: .fetch) {
+                if !joins {
+                    operationProgress = "等待自动 Fetch 结束"
+                }
+                let result = await withTaskCancellationHandler { await fetch.task.value } onCancel: {
+                    fetch.task.cancel()
+                }
+                try Task.checkCancellation()
+                trace.mark(joins ? "joined" : "wait")
+                if joins {
+                    return try result.get()
+                }
+                operationProgress = nil
+            }
+        }
+        return try await command.perform(action, progress: progress)
     }
 
     func cancelOperation() {

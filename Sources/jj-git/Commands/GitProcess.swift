@@ -62,9 +62,10 @@ enum GitProcess {
         (ShellEnvironment.path ?? ProcessInfo.processInfo.environment["PATH"] ?? "") + ":" + fallbackPath
     }
 
+    /// `readOnly`：只读查询不取可选锁，不与同时进行的写操作争抢 `index.lock`，取消时也不残留锁文件。
     static func run(
-        at directory: String, _ arguments: [String], input: Data? = nil,
-        accepted: Set<Int32> = [0], timeout: TimeInterval? = nil, progress: GitProgressHandler? = nil
+        at directory: String, _ arguments: [String], input: Data? = nil, accepted: Set<Int32> = [0],
+        timeout: TimeInterval? = nil, readOnly: Bool = false, progress: GitProgressHandler? = nil
     ) async throws -> GitOutput {
         let config = AppConfig.current.git
         let executable = config.executable.isEmpty ? detected : config.executable
@@ -73,7 +74,8 @@ enum GitProcess {
         }
         let command = ProcessCommand(executable: executable,
                                      arguments: ["--no-pager", "--literal-pathspecs", "-c", "color.ui=false",
-                                                 "-c", "core.quotepath=false"] + arguments,
+                                                 "-c", "core.quotepath=false"]
+                                         + (readOnly ? ["--no-optional-locks"] : []) + arguments,
                                      logged: ["git"] + arguments)
         return try await execute(command, at: directory, input: input, accepted: accepted,
                                  timeout: timeout ?? TimeInterval(config.timeoutSeconds), progress: progress)

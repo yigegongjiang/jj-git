@@ -86,6 +86,9 @@ struct PerformanceView: View {
         if usage.diffFiles > 0 {
             parts.append("差异 \(usage.diffFiles) 文件 / \(usage.diffLines) 行")
         }
+        if usage.cachedCommits > 0 {
+            parts.append("缓存 \(usage.cachedCommits) 提交")
+        }
         return parts.joined(separator: " · ")
     }
 

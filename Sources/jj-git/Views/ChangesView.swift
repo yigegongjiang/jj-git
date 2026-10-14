@@ -47,22 +47,9 @@ struct ChangeList: View {
             SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)",
                            titleAction: showOverview,
                            titleActive: overviewActive) {
-                HStack(spacing: 10) {
-                    Button { transfer(selectedFiles) } label: {
-                        Image(systemName: staged ? "chevron.up" : "chevron.down")
-                    }
-                    .help(staged ? "取消暂存选中 (空格)" : "暂存选中 (空格)")
-                    .accessibilityLabel(staged ? "取消暂存选中" : "暂存选中")
-                    .accessibilityIdentifier("\(listID).transfer-selected")
-                    .disabled(selectedFiles.isEmpty || session.operation != nil)
-                    Button { transfer(files) } label: {
-                        Image(systemName: staged ? "chevron.up.2" : "chevron.down.2")
-                    }
-                    .help(staged ? "全部取消暂存" : "全部暂存")
-                    .accessibilityLabel(staged ? "全部取消暂存" : "全部暂存")
-                    .accessibilityIdentifier("\(listID).transfer-all")
-                    .disabled(files.isEmpty || session.operation != nil)
-                }.buttonStyle(.borderless).font(.ui(weight: .semibold))
+                TransferButtons(session: session, staged: staged, listID: listID,
+                                hasSelection: !selectedFiles.isEmpty, hasFiles: !files.isEmpty,
+                                transferSelected: { transfer(selectedFiles) }, transferAll: { transfer(files) })
             }
             if files.isEmpty {
                 Text(staged ? "暂存文件后提交" : "工作目录无变更")
@@ -84,9 +71,10 @@ struct ChangeList: View {
                             }
                         }
                         .accessibilityRow("\(status) \(file.path)") { selection = [file.id] }
+                        // 行内动作不读取操作状态（执行时再检查），操作开始 / 结束不重算整个列表。
                         .accessibilityMenuActions(
                             (overviewActive ? [MenuAction(title: "在全部差异中定位") { reveal(file) }] : [])
-                                + fileActions([file]).flatMap(\.self)
+                                + fileActions([file], idle: true).flatMap(\.self)
                         )
                         .tag(file.id).help(file.originalPath.map { "\($0) → \(file.path)" } ?? file.path)
                     }
@@ -95,11 +83,12 @@ struct ChangeList: View {
                 .accessibilityIdentifier(listID)
                 // 双击 / 回车 / 空格暂存或取消暂存；右键作用于选中文件。
                 .contextMenu(forSelectionType: String.self) { ids in
-                    MenuActionGroups(groups: fileActions(files.filter { ids.contains($0.id) }))
+                    MenuActionGroups(groups: fileActions(files.filter { ids.contains($0.id) },
+                                                         idle: session.operation == nil))
                 } primaryAction: { ids in
                     transfer(files.filter { ids.contains($0.id) })
                 }
-                .menuShortcuts { fileActions(selectedFiles).flatMap(\.self) }
+                .menuShortcuts { fileActions(selectedFiles, idle: session.operation == nil).flatMap(\.self) }
                 .onKeyPress(.space) {
                     guard !selectedFiles.isEmpty, session.operation == nil else { return .ignored }
                     transfer(selectedFiles)
@@ -152,9 +141,8 @@ struct ChangeList: View {
         staged ? "changes.staged" : "changes.unstaged"
     }
 
-    private func fileActions(_ targets: [FileChange]) -> [[MenuAction]] {
+    private func fileActions(_ targets: [FileChange], idle: Bool) -> [[MenuAction]] {
         guard !targets.isEmpty else { return [] }
-        let idle = session.operation == nil
         var actions = [MenuAction(title: staged ? "取消暂存" : "暂存", enabled: idle) { transfer(targets) }]
         if !staged {
             actions.append(MenuAction(title: "放弃未暂存变更…",
@@ -348,5 +336,35 @@ private struct ChangeListBlankArea: NSViewRepresentable {
             }
             action?()
         }
+    }
+}
+
+/// 列表头的转移按钮单独观察操作状态，操作开始 / 结束不重算文件列表。
+private struct TransferButtons: View {
+    let session: RepositorySession
+    let staged: Bool
+    let listID: String
+    let hasSelection: Bool
+    let hasFiles: Bool
+    let transferSelected: () -> Void
+    let transferAll: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: transferSelected) {
+                Image(systemName: staged ? "chevron.up" : "chevron.down")
+            }
+            .help(staged ? "取消暂存选中 (空格)" : "暂存选中 (空格)")
+            .accessibilityLabel(staged ? "取消暂存选中" : "暂存选中")
+            .accessibilityIdentifier("\(listID).transfer-selected")
+            .disabled(!hasSelection || session.operation != nil)
+            Button(action: transferAll) {
+                Image(systemName: staged ? "chevron.up.2" : "chevron.down.2")
+            }
+            .help(staged ? "全部取消暂存" : "全部暂存")
+            .accessibilityLabel(staged ? "全部取消暂存" : "全部暂存")
+            .accessibilityIdentifier("\(listID).transfer-all")
+            .disabled(!hasFiles || session.operation != nil)
+        }.buttonStyle(.borderless).font(.ui(weight: .semibold))
     }
 }

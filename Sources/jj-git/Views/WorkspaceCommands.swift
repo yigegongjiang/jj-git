@@ -38,7 +38,7 @@ struct WorkspaceCommands: Commands {
                 .keyboardShortcut("s", modifiers: [.command, .shift])
         }
         CommandMenu("仓库") {
-            Button("刷新") { workspace.selected?.refresh(forceHistory: true) }.keyboardShortcut("r")
+            Button("刷新") { workspace.selected?.refresh(.everything) }.keyboardShortcut("r")
             Button("提交历史") { workspace.selected?.changeSection(.history) }.keyboardShortcut("1")
             Button("本地变更") { workspace.selected?.changeSection(.changes) }.keyboardShortcut("2")
             Divider()

@@ -80,23 +80,31 @@ extension RepositorySession {
     func autoFetch() async {
         let remote = defaultRemote
         guard active, operation == nil, autoFetchRun == nil, !remote.isEmpty else { return }
-        let run = Task { [weak self, command] in
+        let task = Task { [weak self, command] () -> Result<String, any Error> in
+            let result: Result<String, any Error>
             do {
-                _ = try await command.perform(.fetch(remote: remote))
-                guard let self else { return }
+                result = try await .success(command.perform(.fetch(remote: remote)))
+            } catch {
+                result = .failure(error)
+            }
+            switch result {
+            case .success:
+                guard let self else { break }
                 clearFetchError(remote: remote)
                 if active {
                     refresh()
                 }
-            } catch is CancellationError {
-                return
-            } catch {
+            case .failure(is CancellationError):
+                break
+            case let .failure(error):
                 self?.reportFetchFailure(remote: remote, failure: error, automatic: true)
             }
+            return result
         }
+        let run = AutoFetchRun(remote: remote, task: task)
         autoFetchRun = run
-        await run.value
-        if autoFetchRun == run {
+        _ = await task.value
+        if autoFetchRun?.task == task {
             autoFetchRun = nil
         }
     }
@@ -111,4 +119,10 @@ extension RepositorySession {
         ]
         perform(.custom(action, variables: values), title: action.waitForExit ? action.name : "启动「\(action.name)」")
     }
+}
+
+/// 进行中的自动 Fetch：远程名用于合并同一远程的手动 Fetch。
+struct AutoFetchRun {
+    let remote: String
+    let task: Task<Result<String, any Error>, Never>
 }

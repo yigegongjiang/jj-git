@@ -99,10 +99,7 @@ private struct CommitGraphPanel: View {
                     .help("选择提交历史显示的列；时间使用本地时区")
                     .accessibilityLabel("显示列").accessibilityMenuActions(columnActions)
                 if session.hasMoreHistory {
-                    Button("加载更多") {
-                        session.historyLimit += AppConfig.current.history.pageSize
-                        session.refresh(forceHistory: true)
-                    }.buttonStyle(.borderless).font(.ui(-2)).disabled(session.refreshing)
+                    LoadMoreButton(session: session)
                 }
             }
             if session.graph.isEmpty {
@@ -324,5 +321,17 @@ private struct GraphLaneView: View {
             context.fill(Path(ellipseIn: CGRect(x: center.x - 3, y: center.y - 3, width: 6, height: 6)),
                          with: .color(colors[row.lane % colors.count]))
         }.accessibilityLabel("提交图，轨道 \(row.lane + 1)，\(row.commit.parents.count) 个父提交")
+    }
+}
+
+/// 单独观察刷新状态：每次刷新的开始 / 结束不重算整个提交列表。
+private struct LoadMoreButton: View {
+    let session: RepositorySession
+
+    var body: some View {
+        Button("加载更多") {
+            session.historyLimit += AppConfig.current.history.pageSize
+            session.refresh(.history)
+        }.buttonStyle(.borderless).font(.ui(-2)).disabled(session.refreshing)
     }
 }

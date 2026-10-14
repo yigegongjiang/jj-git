@@ -44,6 +44,16 @@ enum GitCommandLog {
         queue.async { append(line, repository: repository, limit: limit) }
     }
 
+    /// 界面阶段计时（`event` 首项为 `jj-git`），结果列为 `trace`；Git 命令行之间的空档即排队 / 主线程耗时。
+    static func trace(at repository: String, event: [String], start: Date, milliseconds: Int) {
+        let config = AppConfig.current.commandLog
+        guard config.enabled else { return }
+        let line = [start.formatted(timestamp), "\(milliseconds)", "trace", "0", describe(event), ""]
+            .joined(separator: "\t") + "\n"
+        let limit = config.maxFileMiB * 1024 * 1024
+        queue.async { append(line, repository: repository, limit: limit) }
+    }
+
     private static func append(_ line: String, repository: String, limit: Int) {
         let manager = FileManager.default
         let url = fileURL(for: repository)

@@ -38,7 +38,7 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            workspace.selected?.refresh()
+            workspace.selected?.refresh([.references, .contents])
             workspace.checkMissingRepositories()
         }
         .sheet(item: $workspace.repositoryPicker) { picker in

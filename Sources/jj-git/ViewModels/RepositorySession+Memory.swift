@@ -6,6 +6,7 @@ struct SessionUsage: Sendable {
     var commits = 0
     var diffFiles = 0
     var diffLines = 0
+    var cachedCommits = 0
 }
 
 /// 主线程上拷贝（写时复制，开销为常数），在后台遍历计算。
@@ -16,6 +17,8 @@ struct SessionSnapshot: Sendable {
     let commitDetail: CommitDetail?
     let diff: TextDiff?
     let fileDiffs: [FileDiff]
+    /// 提交差异缓存中当前未显示的条目（显示中的与 fileDiffs 共享存储）。
+    let cachedDiffs: [[FileDiff]]
 
     func usage() -> SessionUsage {
         var usage = SessionUsage(commits: graph.count, diffFiles: fileDiffs.count)
@@ -42,6 +45,11 @@ struct SessionSnapshot: Sendable {
             usage.bytes += Self.diff(diff, lines: &lines)
         }
         usage.diffLines = lines
+        var cachedLines = 0
+        usage.cachedCommits = cachedDiffs.count
+        usage.bytes += cachedDiffs.reduce(0) { total, diffs in
+            total + Self.array(diffs) { Self.string($0.target.path) + Self.diff($0.diff, lines: &cachedLines) }
+        }
         return usage
     }
 
@@ -65,7 +73,7 @@ struct SessionSnapshot: Sendable {
 
 extension RepositorySession {
     var snapshot: SessionSnapshot {
-        SessionSnapshot(status: status, references: references, graph: graph,
-                        commitDetail: commitDetail, diff: diff, fileDiffs: fileDiffs)
+        SessionSnapshot(status: status, references: references, graph: graph, commitDetail: commitDetail,
+                        diff: diff, fileDiffs: fileDiffs, cachedDiffs: commitCache.diffs(excluding: selectedCommit))
     }
 }

@@ -16,6 +16,9 @@ struct FileChange: Identifiable, Hashable, Sendable {
     let worktree: Character
     let conflicted: Bool
     let submodule: Bool
+    /// HEAD / 暂存区 / 工作区的文件模式与对象名（porcelain v2）：暂存区内容变化（含部分暂存）即不相等，
+    /// 据此判断差异是否需要重新读取。工作区内容变化另由文件事件报告。
+    var objects = ""
     var id: String {
         path
     }
@@ -93,7 +96,8 @@ struct WorkingCopyStatus: Equatable, Sendable {
             status.changes.append(FileChange(
                 path: String(fields[fieldCount]), originalPath: original,
                 index: fields[1].first ?? ".", worktree: fields[1].last ?? ".",
-                conflicted: kind == "u", submodule: fields[2].first == "S"
+                conflicted: kind == "u", submodule: fields[2].first == "S",
+                objects: fields[3..<fieldCount].joined(separator: " ")
             ))
         }
         status.changes.sort { FilePath.precedes($0.path, $1.path) }

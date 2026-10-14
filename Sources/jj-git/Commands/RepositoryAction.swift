@@ -28,6 +28,48 @@ enum RepositoryAction: Sendable {
         case fetch, pull, push
     }
 
+    /// 执行通道：Fetch 只写远端跟踪 ref / 标签 / FETCH_HEAD 与对象；暂存区 / 工作区编辑与提交只写 index、
+    /// 工作区、HEAD 与当前分支，与之不相交（Git 对每个 ref / index 各自加锁），可并行。其余操作互斥：检出 / 新建
+    /// 分支可能以远端分支为起点，Fetch 中途读取会落在旧提交上；Push / Pull / 删除或重命名 ref / 配置 / 自定义命令
+    /// 可能写同一批 ref 或运行任意命令。
+    enum Lane {
+        case local, fetch, exclusive
+
+        func runs(alongside other: Self) -> Bool {
+            Set([self, other]) == [.local, .fetch]
+        }
+    }
+
+    var lane: Lane {
+        switch self {
+        case .stage, .unstage, .partial, .discardLines, .discard, .ignore, .commit: .local
+        case .fetch: .fetch
+        default: .exclusive
+        }
+    }
+
+    /// 完成后需要重新读取的范围。差异按 `FileChange.objects` 与文件事件判断是否重读，只有大批改写工作区的操作
+    /// （检出 / Pull / 自定义命令）立即全部重读；暂存区编辑只改状态，ref 操作不改差异。
+    var refreshScope: RefreshScope {
+        switch self {
+        case .stage, .unstage, .partial: []
+        case .discard, .discardLines, .ignore: .worktree
+        case .checkout, .pull: [.references, .contents]
+        case .custom: .everything
+        default: .references
+        }
+    }
+
+    /// 操作直接改写的工作区文件（相对仓库根），完成后立即重读其差异，不等文件事件。
+    var writtenPaths: [String] {
+        switch self {
+        case let .discard(files): files.flatMap(\.paths)
+        case let .discardLines(file, _, _): [file.path]
+        case .ignore: [".gitignore"]
+        default: []
+        }
+    }
+
     /// 工具栏 Fetch / Pull / Push 按钮对应的操作。
     var transfer: Transfer? {
         switch self {
@@ -41,23 +83,30 @@ enum RepositoryAction: Sendable {
 
 actor RepositoryCommand {
     nonisolated let query: RepositoryQuery
-    private var running = false
-    /// 当前操作的进度回调；操作结束即清除。
-    private var progress: GitProgressHandler?
+    /// 进行中操作的通道；并行的操作各自通过任务局部值携带进度回调。
+    private var running: [RepositoryAction.Lane] = []
+    @TaskLocal private static var progress: GitProgressHandler?
 
     init(location: RepositoryLocation) {
         query = RepositoryQuery(location: location)
     }
 
     func perform(_ action: RepositoryAction, progress: GitProgressHandler? = nil) async throws -> String {
-        guard !running else { throw GitFailure(message: "当前仓库有操作正在执行。") }
-        running = true
-        self.progress = progress
+        let lane = action.lane
+        guard running.allSatisfy(lane.runs(alongside:)) else {
+            throw GitFailure(message: "当前仓库有操作正在执行。")
+        }
+        running.append(lane)
         defer {
-            running = false
-            self.progress = nil
+            if let index = running.firstIndex(of: lane) {
+                running.remove(at: index)
+            }
         }
         try Task.checkCancellation()
+        return try await Self.$progress.withValue(progress) { try await dispatch(action) }
+    }
+
+    private func dispatch(_ action: RepositoryAction) async throws -> String {
         switch action {
         case .stage, .unstage, .partial, .discardLines, .discard, .ignore:
             return try await editChanges(action)
@@ -75,7 +124,7 @@ actor RepositoryCommand {
         case let .stage(files):
             return try await run(["add", "--"] + paths(files, \.stagePaths))
         case let .unstage(files):
-            if try await query.status().unborn {
+            if try await !query.headExists() {
                 return try await run(["rm", "--cached", "-r", "-f", "--"] + paths(files))
             }
             return try await run(["restore", "--staged", "--"] + paths(files))
@@ -125,8 +174,7 @@ actor RepositoryCommand {
         guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw GitFailure(message: "提交信息不能为空。")
         }
-        let status = try await query.status()
-        guard !status.conflicts else { throw GitFailure(message: "请先解决并暂存全部冲突。") }
+        guard try await !query.hasConflicts() else { throw GitFailure(message: "请先解决并暂存全部冲突。") }
         if let operation = query.operationInProgress() {
             throw GitFailure(message: "仓库正在进行 \(operation)，请在终端完成或中止后再提交。")
         }
@@ -212,7 +260,7 @@ actor RepositoryCommand {
         try validateName(remote)
         let result = try await GitProcess.run(at: query.location.root,
                                               ["ls-remote", "--exit-code", "--refs", "--", remote, reference],
-                                              accepted: [0, 2], timeout: Self.networkTimeout, progress: progress)
+                                              accepted: [0, 2], timeout: Self.networkTimeout, progress: Self.progress)
         if result.status == 2 {
             if reference.hasPrefix("refs/heads/") {
                 return try await run(["branch", "-dr", "--", remote + "/" + reference.dropFirst(11)])
@@ -299,7 +347,7 @@ actor RepositoryCommand {
 
     private func run(_ arguments: [String], input: Data? = nil, timeout: TimeInterval? = nil) async throws -> String {
         let output = try await GitProcess.run(at: query.location.root, arguments, input: input, timeout: timeout,
-                                              progress: progress)
+                                              progress: Self.progress)
         return [output.text, output.error].filter { !$0.isEmpty }.joined(separator: "\n")
     }
 }
@@ -320,7 +368,7 @@ extension RepositoryCommand {
             return ""
         }
         let output = try await GitProcess.execute(command, at: query.location.root, accepted: Set(0...255),
-                                                  timeout: TimeInterval(action.timeoutSeconds), progress: progress)
+                                                  timeout: TimeInterval(action.timeoutSeconds), progress: Self.progress)
         let text = [output.text, output.error].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }.joined(separator: "\n")
         guard output.status == 0 else {

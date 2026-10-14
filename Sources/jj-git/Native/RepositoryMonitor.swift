@@ -6,14 +6,15 @@ final class RepositoryMonitor: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let contextBox: MonitorCallback
 
-    convenience init(location: RepositoryLocation, callback: @escaping @Sendable () -> Void) {
+    /// 回调参数为本批变化的路径（已排除 `ignoring`），在后台队列调用。
+    convenience init(location: RepositoryLocation, callback: @escaping @Sendable ([String]) -> Void) {
         let paths = Set([location.root, location.gitDirectory, location.commonDirectory])
         // 命令记录可能位于被打开的仓库内（Debug 产物在工程目录下），写入不得触发刷新。
         self.init(paths: Array(paths), ignoring: GitCommandLog.directory, callback: callback)
     }
 
     /// `ignoring` 下的变化不触发回调（如监听目录内持续写入的日志）。
-    init(paths: [String], ignoring: URL? = nil, callback: @escaping @Sendable () -> Void) {
+    init(paths: [String], ignoring: URL? = nil, callback: @escaping @Sendable ([String]) -> Void) {
         // FSEvents 报告真实路径，前缀需同样解析符号链接。
         let ignored = ignoring.map { url in
             realpath(url.path, nil).map { pointer in
@@ -29,13 +30,11 @@ final class RepositoryMonitor: @unchecked Sendable {
             nil, { _, info, count, eventPaths, _, _ in
                 guard let info else { return }
                 let box = Unmanaged<MonitorCallback>.fromOpaque(info).takeUnretainedValue()
-                if let ignored = box.ignored {
-                    let paths = eventPaths.assumingMemoryBound(to: UnsafePointer<CChar>.self)
-                    guard (0..<count).contains(where: { !String(cString: paths[$0]).hasPrefix(ignored) }) else {
-                        return
-                    }
-                }
-                box.callback()
+                let pointers = eventPaths.assumingMemoryBound(to: UnsafePointer<CChar>.self)
+                let paths = (0..<count).map { String(cString: pointers[$0]) }
+                    .filter { path in box.ignored.map { !path.hasPrefix($0) } ?? true }
+                guard !paths.isEmpty else { return }
+                box.callback(paths)
             }, &context, paths as CFArray, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 1.0,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot)
         )
@@ -62,8 +61,8 @@ final class RepositoryMonitor: @unchecked Sendable {
 
 private final class MonitorCallback: Sendable {
     let ignored: String?
-    let callback: @Sendable () -> Void
-    init(ignored: String? = nil, _ callback: @escaping @Sendable () -> Void) {
+    let callback: @Sendable ([String]) -> Void
+    init(ignored: String? = nil, _ callback: @escaping @Sendable ([String]) -> Void) {
         self.ignored = ignored
         self.callback = callback
     }

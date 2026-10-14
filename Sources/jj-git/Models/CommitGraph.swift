@@ -1,5 +1,13 @@
 import Foundation
 
+struct CommitHistory: Sendable {
+    let rows: [CommitGraphRow]
+    /// 提交图列宽（轨道数），超过上限的轨道被裁剪，保证提交标题对齐。
+    let lanes: Int
+    /// 已读到最早的提交，没有更多历史可加载。
+    let complete: Bool
+}
+
 struct GraphEdge: Sendable {
     let from: Int
     let target: Int

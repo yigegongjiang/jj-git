@@ -1,5 +1,11 @@
 import Foundation
 
+struct ReferenceSnapshot: Sendable {
+    let references: [GitReference]
+    let remotes: [GitRemote]
+    let worktrees: [GitWorktree]
+}
+
 struct RepositoryQuery: Sendable {
     let location: RepositoryLocation
 
@@ -53,8 +59,36 @@ struct RepositoryQuery: Sendable {
         return try GitWorktree.parse(output.checkedText())
     }
 
+    /// ref / 远程 / 工作树并行读取。
+    func referenceSnapshot() async throws -> ReferenceSnapshot {
+        async let references = references()
+        async let remotes = remotes()
+        async let worktrees = worktrees()
+        return try await ReferenceSnapshot(references: references, remotes: remotes, worktrees: worktrees)
+    }
+
+    /// 未出生的 HEAD（尚无提交）不存在；只读 ref，不扫描工作区。
+    func headExists() async throws -> Bool {
+        try await GitProcess.run(at: location.root, ["rev-parse", "--verify", "--quiet", "HEAD"],
+                                 accepted: [0, 1], readOnly: true).status == 0
+    }
+
+    /// 只读暂存区中的未合并条目，与 status 的冲突记录一致，不扫描工作区。
+    func hasConflicts() async throws -> Bool {
+        try await !run(["ls-files", "--unmerged", "-z"]).data.isEmpty
+    }
+
+    /// 提交图在后台构建，主线程只接收结果。
+    func history(limit: Int, includeHead: Bool, head: String) async throws -> CommitHistory {
+        let commits = try await commits(limit: limit, includeHead: includeHead)
+        try Task.checkCancellation()
+        let rows = CommitGraphRow.build(commits, head: head)
+        return CommitHistory(rows: rows, lanes: min(rows.map(\.width).max() ?? 1, 8),
+                             complete: commits.count < limit)
+    }
+
     /// 只取分支 / 远端 / 标签 / HEAD，排除 stash、notes 等内部引用；未出生的 HEAD 不能作为修订参数。
-    func commits(limit: Int, includeHead: Bool) async throws -> [GitCommit] {
+    private func commits(limit: Int, includeHead: Bool) async throws -> [GitCommit] {
         let format = "%H%x00%P%x00%an%x00%ae%x00%ct%x00%s%x00%D"
         let output = try await run(["log", "--branches", "--remotes", "--tags", "--date-order", "--no-show-signature",
                                     "--decorate=short", "--format=\(format)", "--max-count=\(limit)"]
@@ -105,7 +139,8 @@ struct RepositoryQuery: Sendable {
             }
             arguments += ["--", file.path]
         }
-        let output = try await GitProcess.run(at: location.root, arguments, accepted: file.untracked ? [0, 1] : [0])
+        let output = try await GitProcess.run(at: location.root, arguments, accepted: file.untracked ? [0, 1] : [0],
+                                              readOnly: true)
         let (text, lossless) = output.diffText
         if let previous, previous.lossless == lossless, previous.raw.utf8.elementsEqual(text.utf8) {
             return previous
@@ -113,35 +148,24 @@ struct RepositoryQuery: Sendable {
         return try TextDiff(text, lossless: lossless, deadline: deadline)
     }
 
-    /// 顺序读取限制进程数；统一预算包含读取、解析与宽度计算，取消会终止 Git。
+    /// 同时读取的差异进程数：逐个读取时总耗时随文件数线性增长，过多则争抢 CPU 与磁盘。
+    private static let parallelReads = 4
+    /// 全部读取超过该时长时先显示已就绪的部分，避免大批文件期间界面空白。
+    private static let prefixDelay = Duration.milliseconds(50)
+
+    /// 有界并发读取、按原顺序返回；统一预算包含读取、解析与宽度计算，超时 / 超限返回 nil，取消会终止 Git。
+    /// `known`：确认未变化的差异，直接沿用不执行 Git；`prefix`：读取超过 prefixDelay 仍未完成时，交出一次已就绪的连续前缀。
     func allDiffs(
-        _ targets: [DiffTarget], commit: GitCommit?, reusing previous: [FileDiff]
+        _ targets: [DiffTarget], commit: GitCommit?, reusing previous: [FileDiff], known: [String: TextDiff] = [:],
+        prefix: (@MainActor @Sendable ([FileDiff]) -> Void)? = nil
     ) async throws -> [FileDiff]? {
         let timeout = AppConfig.current.diff.previewTimeoutMilliseconds
         let deadline = ContinuousClock.now.advanced(by: .milliseconds(timeout))
+        let cached = Dictionary(previous.map { ($0.id, $0.diff) }, uniquingKeysWith: { first, _ in first })
         return try await withThrowingTaskGroup(of: [FileDiff]?.self) { group in
             group.addTask {
-                var result: [FileDiff] = []
-                var bytes = 0
-                let cached = Dictionary(uniqueKeysWithValues: previous.map { ($0.id, $0.diff) })
-                for target in targets {
-                    try Task.checkCancellation()
-                    guard ContinuousClock.now < deadline else { return nil }
-                    let diff: TextDiff
-                    if let commit {
-                        diff = try await commitDiff(commit, path: target.path, deadline: deadline)
-                    } else if let file = target.file {
-                        diff = try await self.diff(file, staged: target.staged, reusing: cached[target.id],
-                                                   deadline: deadline)
-                    } else {
-                        return nil
-                    }
-                    bytes += diff.raw.utf8.count
-                    guard bytes <= AppConfig.current.git.outputLimitMiB * 1024 * 1024,
-                          ContinuousClock.now < deadline else { return nil }
-                    result.append(FileDiff(target: target, diff: diff))
-                }
-                return result
+                try await readDiffs(DiffBatch(targets: targets, commit: commit, cached: cached, known: known),
+                                    deadline: deadline, prefix: prefix)
             }
             group.addTask {
                 try await ContinuousClock().sleep(until: deadline)
@@ -150,6 +174,70 @@ struct RepositoryQuery: Sendable {
             defer { group.cancelAll() }
             return try await group.next() ?? nil
         }
+    }
+
+    /// `cached`：上次的结果，原文相同时跳过解析；`known`：确认未变化，不执行 Git。
+    private struct DiffBatch: Sendable {
+        let targets: [DiffTarget]
+        let commit: GitCommit?
+        let cached: [String: TextDiff]
+        let known: [String: TextDiff]
+    }
+
+    private func readDiffs(
+        _ batch: DiffBatch, deadline: ContinuousClock.Instant, prefix: (@MainActor @Sendable ([FileDiff]) -> Void)?
+    ) async throws -> [FileDiff]? {
+        let targets = batch.targets, commit = batch.commit, cached = batch.cached, known = batch.known
+        let started = ContinuousClock.now
+        let limit = AppConfig.current.git.outputLimitMiB * 1024 * 1024
+        return try await withThrowingTaskGroup(of: (Int, TextDiff?).self) { readers in
+            defer { readers.cancelAll() }
+            var results = [TextDiff?](repeating: nil, count: targets.count)
+            var next = 0, ready = 0, bytes = 0
+            var prefix = prefix
+            func read(_ index: Int) {
+                let target = targets[index]
+                let unchanged = known[target.id]
+                readers.addTask {
+                    if let unchanged {
+                        return (index, unchanged)
+                    }
+                    if let commit {
+                        return try await (index, commitDiff(commit, path: target.path, deadline: deadline))
+                    }
+                    guard let file = target.file else { return (index, nil) }
+                    return try await (index, diff(file, staged: target.staged, reusing: cached[target.id],
+                                                  deadline: deadline))
+                }
+            }
+            while next < min(Self.parallelReads, targets.count) {
+                read(next)
+                next += 1
+            }
+            while let (index, diff) = try await readers.next() {
+                guard let diff else { return nil }
+                bytes += diff.raw.utf8.count
+                guard bytes <= limit, ContinuousClock.now < deadline else { return nil }
+                results[index] = diff
+                if next < targets.count {
+                    read(next)
+                    next += 1
+                }
+                while ready < results.count, results[ready] != nil {
+                    ready += 1
+                }
+                if let callback = prefix, ready > 0, ready < targets.count,
+                   started.duration(to: .now) >= Self.prefixDelay {
+                    prefix = nil
+                    await callback(Self.zipped(targets[..<ready], results[..<ready]))
+                }
+            }
+            return Self.zipped(targets[...], results[...])
+        }
+    }
+
+    private static func zipped(_ targets: ArraySlice<DiffTarget>, _ diffs: ArraySlice<TextDiff?>) -> [FileDiff] {
+        zip(targets, diffs).compactMap { target, diff in diff.map { FileDiff(target: target, diff: $0) } }
     }
 
     func lastMessage() async throws -> String {
@@ -170,6 +258,6 @@ struct RepositoryQuery: Sendable {
     }
 
     private func run(_ arguments: [String]) async throws -> GitOutput {
-        try await GitProcess.run(at: location.root, arguments)
+        try await GitProcess.run(at: location.root, arguments, readOnly: true)
     }
 }
