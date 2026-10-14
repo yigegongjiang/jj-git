@@ -7,6 +7,26 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.5.0] - 2026-10-14
+
+### Changed
+
+- 自动 Fetch 进行中时，暂存 / 取消暂存 / 放弃 / 提交立即执行，不再等待 Fetch 结束；手动 Fetch 同一远程直接沿用进行中的 Fetch
+  - `RepositoryAction.Lane`：`.local`（index / 工作区 / 提交）与 `.fetch` 并行，其余互斥；`RepositoryCommand` 按通道占用，进度回调改为 `@TaskLocal`
+  - `RepositorySession.execute`：冲突操作等待 `AutoFetchRun` 并显示「等待自动 Fetch 结束」；同远程 Fetch 沿用其 `Result`；检出 / 新建分支仍等待（避免以 Fetch 前的远端提交为起点）
+  - 只读查询加 `--no-optional-locks`，不与写操作争抢 `index.lock`；取消暂存的 unborn 判断改 `rev-parse --verify`，提交前冲突检查改 `ls-files --unmerged`（不再扫描工作区）
+- 操作完成、文件保存与定时刷新只重读变化的部分：暂存后文件立即移出差异列表，只有改动过的文件重新读取差异
+  - `RefreshScope`（references / history / contents / worktree）：操作按 `refreshScope` 刷新，不再强制重读历史；并发请求合并，被操作中断的刷新范围补回
+  - `FileSystemChange` 按 FSEvents 路径归类：工作区路径只重读这些文件，index 只读状态，其他元数据读 ref；FETCH_HEAD / objects / logs 忽略
+  - `FileChange.objects`（porcelain v2 模式 + 对象名）参与比较：暂存区 / HEAD 内容变化即重读，其余差异沿用；状态 / ref / 工作树值不变时不赋值
+  - 轮询只在一个间隔内无刷新时执行，且不再重读差异；差异新鲜度依赖文件事件，漏报（如网络卷）时 ⌘R / 激活 App / 切换标签 / 检出 / Pull 全量重读
+- 全部差异并行读取并先显示已读到的文件，文件很多时不再长时间空白或退回单文件；重新选中看过的提交立即显示
+  - `RepositoryQuery.allDiffs`：4 路并发保序，超 50ms 先发布连续前缀；`DiffTableCoordinator` 追加时保持滚动位置，定位目标出现后再滚动
+  - `CommitDiffCache`：按哈希 + 上下文行数缓存详情与差异（≤ 32 条 / 8 MiB），标签释放时清空，计入性能面板
+  - 提交图在 `RepositoryQuery.history` 后台构建；命令记录新增 `trace` 行（操作 wait / git / status / references，全部差异 first / done）
+- 操作进度、刷新状态变化时不再重算文件列表与提交列表，大量变更时点击更跟手
+  - `StatusBar` / `RefreshIndicator` / `TransferButtons` / `LoadMoreButton` 单独观察 operation / refreshing；文件行 AX 动作不再读取操作状态
+
 ## [0.4.66] - 2026-10-14
 
 ### Changed
