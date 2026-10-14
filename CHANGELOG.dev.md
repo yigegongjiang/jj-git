@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.4.66] - 2026-10-14
+
+### Changed
+
+- ⌘P / ⌘⇧P 仓库检索忽略连字符、下划线、空格等分隔符，输入 `jjgit` 即可找到 `jj-git`
+  - `String.searchMatches`：两侧 folding（大小写 / 变音符 / 全半角）后仅保留 alphanumerics 再做 contains；查询仅含分隔符时退回 `localizedCaseInsensitiveContains`
+
 ## [0.4.65] - 2026-10-09
 
 ### Added
