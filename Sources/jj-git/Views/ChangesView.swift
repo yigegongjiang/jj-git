@@ -44,7 +44,7 @@ struct ChangeList: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SectionHeading(title: "\(staged ? "已暂存" : "未暂存") · \(files.count)",
+            SectionHeading(title: "\(staged ? "已暂存（暂存区）" : "未暂存（工作区）") · \(files.count)",
                            titleAction: showOverview,
                            titleActive: overviewActive) {
                 TransferButtons(session: session, staged: staged, listID: listID,
