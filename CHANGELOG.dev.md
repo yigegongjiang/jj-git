@@ -7,6 +7,14 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.5.4] - 2026-10-15
+
+### Changed
+
+- 仓库路径不存在时自动静默移除记录和标签，不再显示提示或要求手动清理
+  - `Workspace.checkMissingRepositories` / `reportOpenFailure` 自动移除；保留权限错误记录与操作中的仓库，移除前复查路径
+  - 验收：隔离 Debug 中缺失记录及标签清理、选中仓库恢复、权限受限路径与现存目录保留、重启持久化通过；Peekaboo 因 Accessibility 权限无法完成界面检查
+
 ## [0.5.3] - 2026-10-15
 
 ### Changed
