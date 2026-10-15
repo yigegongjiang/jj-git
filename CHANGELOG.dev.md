@@ -7,6 +7,13 @@
 
 # Changelog (developer, follow [CHANGELOG.md](./CHANGELOG.md))
 
+## [0.5.3] - 2026-10-15
+
+### Changed
+
+- 本地变更列表标题改为「未暂存（工作区）」与「已暂存（暂存区）」
+  - `ChangeList` 的 `SectionHeading` 补充区域名称，保留文件数量与标题操作
+
 ## [0.5.2] - 2026-10-14
 
 ### Changed
