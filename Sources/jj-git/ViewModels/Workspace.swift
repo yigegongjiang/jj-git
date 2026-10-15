@@ -11,7 +11,6 @@ final class Workspace {
     var scanning = false
     var scanProgress = ""
     var error: String?
-    var missingRepositories: [String] = []
     var repositoryPicker: RepositoryPicker?
     @ObservationIgnored var repositoryCheckTask: Task<Void, Never>?
     /// 避免重复写入相同状态。
@@ -77,7 +76,6 @@ final class Workspace {
                 library.tabs.append(location.root)
             }
             select(location.root)
-            missingRepositories.removeAll { $0 == path || $0 == location.root }
             save()
         } catch { reportOpenFailure(error, path: path) }
     }
@@ -143,7 +141,6 @@ final class Workspace {
         guard sessions[path]?.operation == nil else { return }
         close(path)
         library.repositories.removeAll { $0.path == path }
-        missingRepositories.removeAll { $0 == path }
         save()
     }
 

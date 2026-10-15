@@ -116,7 +116,7 @@ enum RepositoryScanner {
     }
 }
 
-/// 仅明确的路径不存在允许快捷移除；权限 / Git 错误保留原记录。
+/// 仅明确的路径不存在允许静默移除；权限 / Git 错误保留原记录。
 extension SavedRepository {
     static func isMissing(_ path: String) -> Bool {
         do {

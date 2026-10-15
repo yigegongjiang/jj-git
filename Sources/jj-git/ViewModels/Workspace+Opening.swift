@@ -15,7 +15,7 @@ extension Workspace {
         // 打开失败的标签保留（可能只是等待系统授权），点击标签时重试；不再需要时手动关闭。
         let tabs = library.tabs
         let candidates = tabs.filter { $0 == library.selectedPath } + tabs.filter { $0 != library.selectedPath }
-        for path in candidates where !missingRepositories.contains(path) {
+        for path in candidates {
             await open(path)
             if selected != nil {
                 break
@@ -29,7 +29,7 @@ extension Workspace {
         let now = Date().timeIntervalSince1970
         let tabs = Dictionary(library.tabs.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         let candidates = library.repositories.enumerated().filter {
-            $0.element.path != library.selectedPath && !missingRepositories.contains($0.element.path) &&
+            $0.element.path != library.selectedPath &&
                 $0.element.name.searchMatches(query)
         }
         let ranked = candidates.map { (offset: $0.offset, repository: $0.element, usage: $0.element.usage(at: now)) }
@@ -53,20 +53,26 @@ extension Workspace {
 
     func reportOpenFailure(_ failure: Error, path: String) {
         if SavedRepository.isMissing(path) {
-            if !missingRepositories.contains(path) {
-                missingRepositories.append(path)
-                missingRepositories.sort()
-            }
+            removeMissingRepositories([path])
         } else {
-            missingRepositories.removeAll { $0 == path }
             error = "\(path)\n\(failure.localizedDescription)"
+        }
+    }
+
+    /// 先批量移除缺失标签，避免关闭当前标签时切换到另一失效路径。
+    func removeMissingRepositories(_ paths: [String]) {
+        let missing = Set(paths.filter { sessions[$0]?.operation == nil && SavedRepository.isMissing($0) })
+        guard !missing.isEmpty else { return }
+        library.tabs.removeAll { missing.contains($0) }
+        for path in missing {
+            remove(path)
         }
     }
 
     /// 检查全部已保存仓库与标签；文件系统访问在后台执行。
     func checkMissingRepositories() {
         repositoryCheckTask?.cancel()
-        let paths = Array(Set(library.repositories.map(\.path) + library.tabs + missingRepositories)).sorted()
+        let paths = Array(Set(library.repositories.map(\.path) + library.tabs)).sorted()
         let check = Task.detached(priority: .utility) {
             var missing: [String] = []
             for path in paths {
@@ -82,18 +88,9 @@ extension Workspace {
                 await check.value
             } onCancel: { check.cancel() }
             guard let self, !Task.isCancelled else { return }
-            let known = Set(library.repositories.map(\.path) + library.tabs + missingRepositories)
-            let added = missingRepositories.filter { !paths.contains($0) }
-            missingRepositories = (missing + added).filter { known.contains($0) }.sorted()
+            let known = Set(library.repositories.map(\.path) + library.tabs)
+            removeMissingRepositories(missing.filter { known.contains($0) })
         }
-    }
-
-    func removeMissingRepositories(_ paths: [String]) {
-        // 点击时重新检查，避免移除已恢复的路径。
-        for path in paths where SavedRepository.isMissing(path) {
-            remove(path)
-        }
-        checkMissingRepositories()
     }
 }
 
